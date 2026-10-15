@@ -7,6 +7,7 @@ import {
   updateDoc, 
   serverTimestamp 
 } from 'firebase/firestore';
+import { logAuditEvent } from '../components/audit/AuditLogsView';
 
 export const AdminOrdersContext = createContext();
 
@@ -109,6 +110,16 @@ export const AdminOrdersProvider = ({ children }) => {
         updatedAt: serverTimestamp(),
       });
       showToast(`Order #${orderId.slice(0, 8)} status set to "${newStatus}"`);
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'ORDER_STATUS_UPDATE',
+        details: `Updated Order #${orderId.slice(0, 8)} status to "${newStatus}"`,
+        category: 'Orders',
+        severity: newStatus.toLowerCase() === 'delivered' ? 'success' : 'info',
+        actor: 'Admin',
+      });
+
       return true;
     } catch (err) {
       console.error("Error updating order status:", err);
@@ -127,6 +138,16 @@ export const AdminOrdersProvider = ({ children }) => {
         updatedAt: serverTimestamp(),
       });
       showToast(`Order #${orderId.slice(0, 8)} has been cancelled.`);
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'ORDER_CANCELLED',
+        details: `Cancelled Order #${orderId.slice(0, 8)}. Reason: "${reason || 'Unspecified'}"`,
+        category: 'Orders',
+        severity: 'danger',
+        actor: 'Admin',
+      });
+
       return true;
     } catch (err) {
       console.error("Error cancelling order:", err);
@@ -146,6 +167,16 @@ export const AdminOrdersProvider = ({ children }) => {
         updatedAt: serverTimestamp(),
       });
       showToast(`Assigned ${partnerData.name} & marked Out for Delivery!`);
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'PARTNER_ASSIGNED',
+        details: `Assigned rider ${partnerData.name} (${partnerData.phone}) to Order #${orderId.slice(0, 8)}`,
+        category: 'Orders',
+        severity: 'success',
+        actor: 'Admin',
+      });
+
       return true;
     } catch (err) {
       console.error("Error assigning rider partner:", err);

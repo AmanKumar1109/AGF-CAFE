@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { CONTENT_NAV_ITEMS } from '../../constants/navigation';
+import { logAuditEvent } from '../audit/AuditLogsView';
 import {
   FileText,
   Save,
@@ -343,6 +344,16 @@ export const ContentManagementView = ({ initialPageId = 'privacy-policy', onSele
       setHasChanges(false);
       setSaved(true);
       setLastUpdated(new Date());
+
+      // Log event in System Audit Logs
+      await logAuditEvent({
+        action: 'POLICY_SAVED',
+        details: `Saved & published revised policy "${currentItem.label}" (settings/${currentItem.docId})`,
+        category: 'Content',
+        severity: 'success',
+        actor: 'Admin',
+      });
+
       setTimeout(() => setSaved(false), 3500);
     } catch (err) {
       console.error('Failed to save content:', err);

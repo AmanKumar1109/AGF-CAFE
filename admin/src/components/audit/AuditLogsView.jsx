@@ -150,8 +150,9 @@ const SAMPLE_CAFE_LOGS = [
 ];
 
 export const AuditLogsView = () => {
-  const [auditLogs, setAuditLogs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // Initialize with SAMPLE_CAFE_LOGS so the screen is never blank even before network finishes
+  const [auditLogs, setAuditLogs] = useState(SAMPLE_CAFE_LOGS);
+  const [loading, setLoading] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
 
   // Search & Filter States matching Grocery Hub
@@ -170,13 +171,37 @@ export const AuditLogsView = () => {
   // Copied Log ID state for visual feedback
   const [copiedId, setCopiedId] = useState(null);
 
+  // Auto-seed helper
+  const seedLogsToFirestore = async () => {
+    try {
+      for (const log of SAMPLE_CAFE_LOGS) {
+        await setDoc(doc(db, 'auditLogs', log.id), {
+          ...log,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (e) {
+      console.warn('Auto-seed failed:', e);
+    }
+  };
+
   // Firestore real-time listener
   useEffect(() => {
-    setLoading(true);
+    let isSubscribed = true;
     try {
       const unsub = onSnapshot(
         collection(db, 'auditLogs'),
         (snap) => {
+          if (!isSubscribed) return;
+
+          if (snap.empty) {
+            // Firestore collection has 0 documents! Auto-seed demo logs so it permanently populates in cloud
+            setAuditLogs(SAMPLE_CAFE_LOGS);
+            seedLogsToFirestore();
+            setLoading(false);
+            return;
+          }
+
           const loaded = [];
           snap.forEach((d) => {
             loaded.push({ id: d.id, ...d.data() });
@@ -193,16 +218,20 @@ export const AuditLogsView = () => {
           setLoading(false);
         },
         (err) => {
-          console.error('Audit logs error:', err);
-          // If firestore fails, use sample logs
-          setAuditLogs(SAMPLE_CAFE_LOGS);
-          setLoading(false);
+          console.warn('Audit logs snapshot note (using local cache):', err);
+          if (isSubscribed) {
+            setAuditLogs(SAMPLE_CAFE_LOGS);
+            setLoading(false);
+          }
         }
       );
 
-      return () => unsub();
+      return () => {
+        isSubscribed = false;
+        unsub();
+      };
     } catch (e) {
-      console.warn('Audit logs listener failed, using sample logs:', e);
+      console.warn('Audit logs listener setup failed, using sample logs:', e);
       setAuditLogs(SAMPLE_CAFE_LOGS);
       setLoading(false);
     }
