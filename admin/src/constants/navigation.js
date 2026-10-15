@@ -27,6 +27,18 @@ export const MAIN_NAV_ITEMS = [
     path: '/customers',
   },
   {
+    id: 'reviews',
+    label: 'Reviews',
+    icon: 'Star',
+    path: '/reviews',
+  },
+  {
+    id: 'complaints',
+    label: 'Complaints',
+    icon: 'MessageSquareWarning',
+    path: '/complaints',
+  },
+  {
     id: 'content',
     label: 'Content',
     icon: 'FileText',

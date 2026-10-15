@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   ClipboardList,
@@ -15,13 +15,40 @@ import {
   ChevronUp,
   PanelLeftClose,
   Sparkles,
+  Star,
+  MessageSquareWarning,
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, SECONDARY_NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../constants/navigation';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab }) => {
   const [financesExpanded, setFinancesExpanded] = useState(true);
   const { activeOrders } = useAdminOrders();
+  const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
+  const [pendingComplaintsCount, setPendingComplaintsCount] = useState(0);
+
+  useEffect(() => {
+    try {
+      const qRev = query(collection(db, 'customer_reviews'), where('status', '==', 'pending'));
+      const unsubRev = onSnapshot(qRev, (snap) => {
+        setPendingReviewsCount(snap.size);
+      }, (err) => console.warn('Sidebar reviews count error:', err));
+
+      const qComp = query(collection(db, 'complaints'), where('status', '==', 'pending'));
+      const unsubComp = onSnapshot(qComp, (snap) => {
+        setPendingComplaintsCount(snap.size);
+      }, (err) => console.warn('Sidebar complaints count error:', err));
+
+      return () => {
+        unsubRev();
+        unsubComp();
+      };
+    } catch (e) {
+      console.warn('Sidebar listener setup error:', e);
+    }
+  }, []);
 
   // Icon mapper
   const getIcon = (name, className = 'w-[18px] h-[18px]') => {
@@ -34,6 +61,10 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
         return <Package className={className} />;
       case 'Users':
         return <Users className={className} />;
+      case 'Star':
+        return <Star className={className} />;
+      case 'MessageSquareWarning':
+        return <MessageSquareWarning className={className} />;
       case 'FileText':
         return <FileText className={className} />;
       case 'Store':
@@ -121,6 +152,18 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
                   }`}>
                     {activeOrders?.length || 0}
                   </span>
+                ) : item.id === 'reviews' ? (
+                  pendingReviewsCount > 0 ? (
+                    <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-300">
+                      {pendingReviewsCount}
+                    </span>
+                  ) : null
+                ) : item.id === 'complaints' ? (
+                  pendingComplaintsCount > 0 ? (
+                    <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300 animate-pulse">
+                      {pendingComplaintsCount}
+                    </span>
+                  ) : null
                 ) : item.badge && (
                   <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100/60">
                     {item.badge}

@@ -22,6 +22,8 @@ import { useStaggerEntrance } from './hooks/useGSAPAnimation';
 import { ProductsManager } from './components/products/ProductsManager';
 import { OrdersManager } from './components/orders/OrdersManager';
 import { UsersView } from './components/users/UsersView';
+import { ReviewsView } from './components/reviews/ReviewsView';
+import { ComplaintsView } from './components/complaints/ComplaintsView';
 import { AdminOrdersProvider } from './context/AdminOrdersContext';
 
 export default function App() {
@@ -60,6 +62,10 @@ export default function App() {
           <OrdersManager />
         ) : activeTab === 'customers' ? (
           <UsersView />
+        ) : activeTab === 'reviews' ? (
+          <ReviewsView />
+        ) : activeTab === 'complaints' ? (
+          <ComplaintsView />
         ) : (
           <div ref={dashboardContainerRef} className="space-y-5">
             {/* Dashboard Title & Top Action Controls */}
