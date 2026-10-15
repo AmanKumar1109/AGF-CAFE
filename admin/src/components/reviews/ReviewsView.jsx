@@ -27,6 +27,7 @@ import {
   addDoc,
   serverTimestamp
 } from 'firebase/firestore';
+import { logAuditEvent } from '../audit/AuditLogsView';
 
 export const ReviewsView = () => {
   const [reviews, setReviews] = useState([]);
@@ -83,6 +84,15 @@ export const ReviewsView = () => {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: newStatus === 'approved' ? 'REVIEW_APPROVED' : 'REVIEW_STATUS_CHANGED',
+        details: `${newStatus === 'approved' ? 'Approved' : 'Updated'} customer review #${id.slice(0, 8)} to "${newStatus}"`,
+        category: 'Reviews',
+        severity: newStatus === 'approved' ? 'success' : 'warning',
+        actor: 'Admin',
+      });
     } catch (err) {
       console.error('Error updating review status:', err);
       alert('Failed to update status.');
@@ -93,6 +103,15 @@ export const ReviewsView = () => {
     if (window.confirm('Are you sure you want to permanently delete this customer review?')) {
       try {
         await deleteDoc(doc(db, 'customer_reviews', id));
+
+        // Record Audit Log
+        await logAuditEvent({
+          action: 'REVIEW_DELETED',
+          details: `Permanently deleted customer review #${id.slice(0, 8)}`,
+          category: 'Reviews',
+          severity: 'danger',
+          actor: 'Admin',
+        });
       } catch (err) {
         console.error('Error deleting review:', err);
         alert('Failed to delete review.');
@@ -112,6 +131,16 @@ export const ReviewsView = () => {
         location: editingReview.location,
         updatedAt: serverTimestamp(),
       });
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'REVIEW_EDITED',
+        details: `Edited customer review #${editingReview.id.slice(0, 8)} for "${editingReview.userName}"`,
+        category: 'Reviews',
+        severity: 'info',
+        actor: 'Admin',
+      });
+
       setEditingReview(null);
     } catch (err) {
       console.error('Error updating review:', err);
@@ -127,7 +156,7 @@ export const ReviewsView = () => {
     }
 
     try {
-      await addDoc(collection(db, 'customer_reviews'), {
+      const docRef = await addDoc(collection(db, 'customer_reviews'), {
         ...newReview,
         rating: Number(newReview.rating),
         status: 'approved', // Admin added reviews are approved by default
@@ -135,6 +164,16 @@ export const ReviewsView = () => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'REVIEW_CREATED',
+        details: `Published verified customer testimonial for "${newReview.userName}" (${newReview.rating}★)`,
+        category: 'Reviews',
+        severity: 'success',
+        actor: 'Admin',
+      });
+
       setIsAddingReview(false);
       setNewReview({
         userName: '',

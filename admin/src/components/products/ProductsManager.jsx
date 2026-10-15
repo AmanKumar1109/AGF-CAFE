@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { db } from '../../firebase';
 import { ProductModal } from './ProductModal';
+import { logAuditEvent } from '../audit/AuditLogsView';
 
 // Default initial items to seed if database is brand new
 const INITIAL_SEED_ITEMS = [
@@ -198,12 +199,30 @@ export const ProductsManager = () => {
         updatedAt: serverTimestamp(),
       });
       showNotification(`"${productData.name}" updated successfully!`);
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'ITEM_UPDATED',
+        details: `Updated dish "${productData.name}" (Price: ₹${productData.price}, Category: ${productData.category}, Status: ${productData.inStock ? 'In Stock' : 'Out of Stock'})`,
+        category: 'Catalog',
+        severity: 'info',
+        actor: 'Admin',
+      });
     } else {
       await addDoc(collection(db, 'menu_items'), {
         ...productData,
         createdAt: serverTimestamp(),
       });
       showNotification(`"${productData.name}" added to menu!`);
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'ITEM_CREATED',
+        details: `Created new menu dish "${productData.name}" (Price: ₹${productData.price}, Category: ${productData.category})`,
+        category: 'Catalog',
+        severity: 'success',
+        actor: 'Admin',
+      });
     }
   };
 
@@ -213,6 +232,15 @@ export const ProductsManager = () => {
       try {
         await deleteDoc(doc(db, 'menu_items', item.id));
         showNotification(`"${item.name}" removed from menu.`);
+
+        // Record Audit Log
+        await logAuditEvent({
+          action: 'ITEM_DELETED',
+          details: `Deleted menu dish "${item.name}" (ID: ${item.id}) from live catalog`,
+          category: 'Catalog',
+          severity: 'danger',
+          actor: 'Admin',
+        });
       } catch (err) {
         alert('Failed to delete item: ' + err.message);
       }
@@ -228,6 +256,15 @@ export const ProductsManager = () => {
       showNotification(
         `"${item.name}" marked as ${newStatus ? 'In Stock' : 'Out of Stock'}`
       );
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'ITEM_STOCK_TOGGLED',
+        details: `Changed stock availability of "${item.name}" to ${newStatus ? 'In Stock' : 'Out of Stock'}`,
+        category: 'Catalog',
+        severity: newStatus ? 'success' : 'warning',
+        actor: 'Admin',
+      });
     } catch (err) {
       console.error(err);
     }
@@ -245,6 +282,15 @@ export const ProductsManager = () => {
         });
       }
       showNotification('Successfully seeded 8 default cafe dishes to Firestore!');
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'ITEMS_SEEDED',
+        details: `Seeded 8 initial cafe dishes to Firestore catalog`,
+        category: 'Catalog',
+        severity: 'info',
+        actor: 'Admin',
+      });
     } catch (err) {
       console.error(err);
       alert('Error seeding menu: ' + err.message);

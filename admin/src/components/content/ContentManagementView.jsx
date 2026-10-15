@@ -327,6 +327,14 @@ export const ContentManagementView = ({ initialPageId = 'privacy-policy', onSele
       }
       setHasChanges(true);
       setSaved(false);
+
+      logAuditEvent({
+        action: 'POLICY_RESET',
+        details: `Reset "${currentItem.label}" to AGF Cafe standard verified template in editor`,
+        category: 'Content',
+        severity: 'warning',
+        actor: 'Admin',
+      });
     }
   };
 

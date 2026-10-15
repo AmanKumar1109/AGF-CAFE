@@ -30,6 +30,7 @@ import {
   deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
+import { logAuditEvent } from '../audit/AuditLogsView';
 
 export const ComplaintsView = () => {
   const [complaints, setComplaints] = useState([]);
@@ -116,6 +117,15 @@ export const ComplaintsView = () => {
           adminReply: adminReply !== null ? adminReply.trim() : prev?.adminReply,
         }));
       }
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: newStatus === 'resolved' ? 'COMPLAINT_RESOLVED' : 'COMPLAINT_STATUS_UPDATE',
+        details: `Updated complaint #${id.slice(0, 8)} status to "${newStatus}"${adminReply ? ` with reply: "${adminReply.slice(0, 50)}..."` : ''}`,
+        category: 'Support',
+        severity: newStatus === 'resolved' ? 'success' : 'info',
+        actor: 'Admin',
+      });
     } catch (err) {
       console.error('Error updating complaint status:', err);
       alert('Failed to update complaint status.');
@@ -131,6 +141,15 @@ export const ComplaintsView = () => {
         if (selectedComplaint && selectedComplaint.id === id) {
           setSelectedComplaint(null);
         }
+
+        // Record Audit Log
+        await logAuditEvent({
+          action: 'COMPLAINT_DELETED',
+          details: `Deleted complaint record #${id.slice(0, 8)} from database`,
+          category: 'Support',
+          severity: 'danger',
+          actor: 'Admin',
+        });
       } catch (err) {
         console.error('Error deleting complaint:', err);
         alert('Failed to delete complaint.');

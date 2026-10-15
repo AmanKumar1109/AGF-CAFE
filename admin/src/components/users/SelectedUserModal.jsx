@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { logAuditEvent } from '../audit/AuditLogsView';
 
 export const SelectedUserModal = ({ user, onClose, onUserUpdated }) => {
   if (!user) return null;
@@ -85,6 +86,16 @@ export const SelectedUserModal = ({ user, onClose, onUserUpdated }) => {
         updatedAt: serverTimestamp()
       });
       user.isBlocked = newStatus;
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: newStatus ? 'USER_BLOCKED' : 'USER_UNBLOCKED',
+        details: `${newStatus ? 'Blocked' : 'Unblocked'} customer account "${user.name || 'User'}" (Phone: ${user.phone || 'N/A'}, ID: ${user.id})`,
+        category: 'Customers',
+        severity: newStatus ? 'danger' : 'success',
+        actor: 'Admin',
+      });
+
       if (onUserUpdated) onUserUpdated();
     } catch (err) {
       console.error('Failed to toggle block status:', err);
@@ -110,6 +121,16 @@ export const SelectedUserModal = ({ user, onClose, onUserUpdated }) => {
       });
       user.adminNote = noteText;
       setNoteSavedSuccess(true);
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'USER_NOTE_SAVED',
+        details: `Saved internal admin remarks on customer "${user.name || 'User'}" (ID: ${user.id})`,
+        category: 'Customers',
+        severity: 'info',
+        actor: 'Admin',
+      });
+
       setTimeout(() => setNoteSavedSuccess(false), 2500);
       if (onUserUpdated) onUserUpdated();
     } catch (err) {
