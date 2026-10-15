@@ -69,7 +69,7 @@ export const Footer = () => {
                 <Link to="/menu" className="hover:text-amber-400 transition">Our Menu</Link>
               </li>
               <li>
-                <Link to="/about" className="hover:text-amber-400 transition">About Us</Link>
+                <Link to="/about-us" className="hover:text-amber-400 transition">About Us</Link>
               </li>
               <li>
                 <Link to="/gallery" className="hover:text-amber-400 transition">Photo Gallery</Link>
@@ -77,24 +77,33 @@ export const Footer = () => {
               <li>
                 <Link to="/contact" className="hover:text-amber-400 transition">Contact & Reservation</Link>
               </li>
+              <li>
+                <Link to="/complaint" className="hover:text-amber-400 transition">Lodge a Complaint</Link>
+              </li>
             </ul>
           </div>
 
-          {/* Working Hours */}
+          {/* Legal & Policies */}
           <div className="text-left space-y-3">
-            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Cafe Hours</h4>
+            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Policies</h4>
             <ul className="space-y-2 text-xs text-stone-400">
               <li>
-                <span className="text-stone-200 block font-medium">Mon - Fri:</span>
-                10:00 AM – 11:30 PM
+                <Link to="/privacy-policy" className="hover:text-amber-400 transition">Privacy Policy</Link>
               </li>
               <li>
-                <span className="text-stone-200 block font-medium">Saturday:</span>
-                09:00 AM – Midnight
+                <Link to="/terms-of-service" className="hover:text-amber-400 transition">Terms & Conditions</Link>
               </li>
               <li>
-                <span className="text-stone-200 block font-medium">Sunday:</span>
-                09:00 AM – Midnight
+                <Link to="/refund-policy" className="hover:text-amber-400 transition">Refund Policy</Link>
+              </li>
+              <li>
+                <Link to="/cancellation-policy" className="hover:text-amber-400 transition">Cancellation Policy</Link>
+              </li>
+              <li>
+                <Link to="/shipping-policy" className="hover:text-amber-400 transition">Shipping & Delivery</Link>
+              </li>
+              <li>
+                <Link to="/disclaimer" className="hover:text-amber-400 transition">Disclaimer</Link>
               </li>
             </ul>
           </div>
@@ -115,6 +124,10 @@ export const Footer = () => {
                 <Mail className="w-4 h-4 text-amber-500 shrink-0" />
                 <span>hello@agfcafe.in</span>
               </p>
+              <div className="pt-2">
+                <span className="text-stone-300 font-semibold block">Cafe Hours:</span>
+                <span>Open Daily: 10:00 AM – 11:30 PM</span>
+              </div>
             </div>
           </div>
 
@@ -123,10 +136,13 @@ export const Footer = () => {
         {/* Bottom copyright line */}
         <div className="mt-12 pt-8 border-t border-stone-800/80 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-500 gap-4">
           <p>© 2026 AGF CAFE. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <a href="#privacy" className="hover:text-stone-300">Privacy Policy</a>
-            <a href="#terms" className="hover:text-stone-300">Terms of Service</a>
-            <a href="#hygiene" className="hover:text-stone-300">FSSAI Certified</a>
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+            <Link to="/privacy-policy" className="hover:text-stone-300">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="hover:text-stone-300">Terms</Link>
+            <Link to="/refund-policy" className="hover:text-stone-300">Refunds</Link>
+            <Link to="/cancellation-policy" className="hover:text-stone-300">Cancellations</Link>
+            <Link to="/shipping-policy" className="hover:text-stone-300">Shipping</Link>
+            <Link to="/disclaimer" className="hover:text-stone-300">Disclaimer</Link>
           </div>
         </div>
       </div>

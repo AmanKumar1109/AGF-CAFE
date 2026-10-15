@@ -39,16 +39,62 @@ export const MAIN_NAV_ITEMS = [
     path: '/complaints',
   },
   {
-    id: 'content',
-    label: 'Content',
-    icon: 'FileText',
-    path: '/content',
-  },
-  {
     id: 'online-store',
     label: 'Online Store',
     icon: 'Store',
     path: '/store',
+  },
+];
+
+export const CONTENT_NAV_ITEMS = [
+  {
+    id: 'privacy-policy',
+    label: 'Privacy Policy',
+    docId: 'privacyPolicy',
+    icon: 'FileText',
+    path: '/privacy-policy',
+  },
+  {
+    id: 'terms-of-service',
+    label: 'Terms and Conditions',
+    docId: 'termsOfService',
+    icon: 'FileText',
+    path: '/terms-of-service',
+  },
+  {
+    id: 'refund-policy',
+    label: 'Refund Policy',
+    docId: 'refundPolicy',
+    icon: 'FileText',
+    path: '/refund-policy',
+  },
+  {
+    id: 'cancellation-policy',
+    label: 'Cancellation Policy',
+    docId: 'cancellationPolicy',
+    icon: 'FileText',
+    path: '/cancellation-policy',
+  },
+  {
+    id: 'disclaimer',
+    label: 'Disclaimer',
+    docId: 'disclaimer',
+    icon: 'FileText',
+    path: '/disclaimer',
+  },
+  {
+    id: 'shipping-policy',
+    label: 'Shipping & Delivery',
+    docId: 'shippingPolicy',
+    icon: 'FileText',
+    path: '/shipping-policy',
+  },
+  {
+    id: 'about-us',
+    label: 'About Us',
+    docId: 'aboutUs',
+    icon: 'FileText',
+    path: '/about-us',
   },
 ];
 

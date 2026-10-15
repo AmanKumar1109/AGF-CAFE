@@ -8,6 +8,7 @@ import { GalleryPage } from '../pages/GalleryPage';
 import { ContactPage } from '../pages/ContactPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { ComplaintPage } from '../pages/ComplaintPage';
+import DynamicPage from '../pages/DynamicPage';
 
 import { DashboardLayout } from '../components/dashboard/DashboardLayout';
 import { DashboardHome } from '../pages/dashboard/DashboardHome';
@@ -65,9 +66,17 @@ export const AppRoutes = () => {
         <Route index element={<HomePage />} />
         <Route path="menu" element={<MenuPage />} />
         <Route path="about" element={<AboutPage />} />
+        <Route path="about-us" element={<DynamicPage documentId="aboutUs" title="About Us" />} />
         <Route path="gallery" element={<GalleryPage />} />
         <Route path="contact" element={<ContactPage />} />
         <Route path="complaint" element={<ComplaintPage />} />
+        <Route path="privacy-policy" element={<DynamicPage documentId="privacyPolicy" title="Privacy Policy" />} />
+        <Route path="terms-of-service" element={<DynamicPage documentId="termsOfService" title="Terms and Conditions" />} />
+        <Route path="terms" element={<Navigate to="/terms-of-service" replace />} />
+        <Route path="refund-policy" element={<DynamicPage documentId="refundPolicy" title="Refund Policy" />} />
+        <Route path="cancellation-policy" element={<DynamicPage documentId="cancellationPolicy" title="Cancellation Policy" />} />
+        <Route path="disclaimer" element={<DynamicPage documentId="disclaimer" title="Disclaimer" />} />
+        <Route path="shipping-policy" element={<DynamicPage documentId="shippingPolicy" title="Shipping & Delivery" />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
 

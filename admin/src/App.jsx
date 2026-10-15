@@ -24,6 +24,7 @@ import { OrdersManager } from './components/orders/OrdersManager';
 import { UsersView } from './components/users/UsersView';
 import { ReviewsView } from './components/reviews/ReviewsView';
 import { ComplaintsView } from './components/complaints/ComplaintsView';
+import { ContentManagementView } from './components/content/ContentManagementView';
 import { AdminOrdersProvider } from './context/AdminOrdersContext';
 
 export default function App() {
@@ -53,6 +54,17 @@ export default function App() {
     }));
   };
 
+  const isContentTab = [
+    'privacy-policy',
+    'terms-of-service',
+    'refund-policy',
+    'cancellation-policy',
+    'disclaimer',
+    'shipping-policy',
+    'about-us',
+    'content',
+  ].includes(activeTab);
+
   return (
     <AdminOrdersProvider>
       <MainLayout activeTab={activeTab} onSelectTab={setActiveTab}>
@@ -66,6 +78,11 @@ export default function App() {
           <ReviewsView />
         ) : activeTab === 'complaints' ? (
           <ComplaintsView />
+        ) : isContentTab ? (
+          <ContentManagementView
+            initialPageId={activeTab === 'content' ? 'privacy-policy' : activeTab}
+            onSelectPage={setActiveTab}
+          />
         ) : (
           <div ref={dashboardContainerRef} className="space-y-5">
             {/* Dashboard Title & Top Action Controls */}
