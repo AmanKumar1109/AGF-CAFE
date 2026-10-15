@@ -6,25 +6,17 @@ import {
   Users,
   FileText,
   Store,
-  Banknote,
-  BarChart2,
-  Percent,
   Settings,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
   PanelLeftClose,
-  Sparkles,
   Star,
   MessageSquareWarning,
 } from 'lucide-react';
-import { MAIN_NAV_ITEMS, SECONDARY_NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../constants/navigation';
+import { MAIN_NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../constants/navigation';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 
 export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab }) => {
-  const [financesExpanded, setFinancesExpanded] = useState(true);
   const { activeOrders } = useAdminOrders();
   const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
   const [pendingComplaintsCount, setPendingComplaintsCount] = useState(0);
@@ -69,16 +61,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
         return <FileText className={className} />;
       case 'Store':
         return <Store className={className} />;
-      case 'Banknote':
-        return <Banknote className={className} />;
-      case 'BarChart2':
-        return <BarChart2 className={className} />;
-      case 'Percent':
-        return <Percent className={className} />;
       case 'Settings':
         return <Settings className={className} />;
-      case 'HelpCircle':
-        return <HelpCircle className={className} />;
       default:
         return <LayoutDashboard className={className} />;
     }
@@ -173,61 +157,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
             );
           })}
 
-          {/* Finances Section */}
-          <div className="pt-2">
-            <button
-              onClick={() => setFinancesExpanded(!financesExpanded)}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13.5px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-slate-400">
-                  <Banknote className="w-[18px] h-[18px]" />
-                </span>
-                {!isCollapsed && <span>Finances</span>}
-              </div>
-              {!isCollapsed && (
-                <span className="text-slate-400">
-                  {financesExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                </span>
-              )}
-            </button>
-
-            {/* Submenu items */}
-            {financesExpanded && !isCollapsed && (
-              <div className="pl-9 pr-3 py-1 space-y-1 relative before:absolute before:left-6 before:top-2 before:bottom-2 before:w-[1px] before:bg-slate-200">
-                {['Invoices', 'Transactions', 'Reports'].map((sub) => (
-                  <button
-                    key={sub}
-                    onClick={() => onSelectTab(sub.toLowerCase())}
-                    className="w-full text-left py-1.5 px-2 text-[13px] text-slate-500 hover:text-blue-600 hover:bg-slate-50/80 rounded-lg transition"
-                  >
-                    {sub}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Other Secondary Items */}
-            <button
-              onClick={() => onSelectTab('analytics')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-            >
-              <span className="text-slate-400">
-                <BarChart2 className="w-[18px] h-[18px]" />
-              </span>
-              {!isCollapsed && <span>Analytics</span>}
-            </button>
-
-            <button
-              onClick={() => onSelectTab('discounts')}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition cursor-pointer"
-            >
-              <span className="text-slate-400">
-                <Percent className="w-[18px] h-[18px]" />
-              </span>
-              {!isCollapsed && <span>Discounts</span>}
-            </button>
-          </div>
         </div>
       </div>
 
@@ -243,29 +172,6 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
             {!isCollapsed && <span>{item.label}</span>}
           </button>
         ))}
-
-        {/* Upgrade to Premium Card */}
-        {!isCollapsed && (
-          <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-[#121b33] via-[#0f1d3e] to-[#1d3570] text-white shadow-lg shadow-blue-900/10 relative overflow-hidden group">
-            {/* Ambient Background Glow */}
-            <div className="absolute -right-6 -bottom-6 w-24 h-24 bg-blue-500/20 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform duration-500" />
-            
-            <div className="w-8 h-8 rounded-xl bg-white/10 backdrop-blur-md border border-white/15 flex items-center justify-center mb-3">
-              <Sparkles className="w-4 h-4 text-blue-300" />
-            </div>
-
-            <h4 className="text-[13.5px] font-semibold text-white tracking-tight">
-              Upgrade to Premium!
-            </h4>
-            <p className="text-[11.5px] text-slate-300/80 mt-1 mb-3.5 leading-relaxed">
-              Upgrade your account and unlock all of the benefits.
-            </p>
-
-            <button className="w-full py-2 px-3 bg-[#2563eb] hover:bg-blue-600 active:scale-[0.98] text-white rounded-xl text-xs font-semibold shadow-md shadow-blue-500/30 transition-all cursor-pointer">
-              Upgrade premium
-            </button>
-          </div>
-        )}
       </div>
     </aside>
   );

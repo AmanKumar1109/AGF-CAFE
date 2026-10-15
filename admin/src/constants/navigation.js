@@ -52,31 +52,7 @@ export const MAIN_NAV_ITEMS = [
   },
 ];
 
-export const SECONDARY_NAV_ITEMS = [
-  {
-    id: 'finances',
-    label: 'Finances',
-    icon: 'Banknote',
-    expandable: true,
-    children: [
-      { id: 'invoices', label: 'Invoices', path: '/finances/invoices' },
-      { id: 'transactions', label: 'Transactions', path: '/finances/transactions' },
-      { id: 'reports', label: 'Reports', path: '/finances/reports' },
-    ],
-  },
-  {
-    id: 'analytics',
-    label: 'Analytics',
-    icon: 'BarChart2',
-    path: '/analytics',
-  },
-  {
-    id: 'discounts',
-    label: 'Discounts',
-    icon: 'Percent',
-    path: '/discounts',
-  },
-];
+export const SECONDARY_NAV_ITEMS = [];
 
 export const BOTTOM_NAV_ITEMS = [
   {
@@ -85,10 +61,5 @@ export const BOTTOM_NAV_ITEMS = [
     icon: 'Settings',
     path: '/settings',
   },
-  {
-    id: 'help',
-    label: 'Help & Support',
-    icon: 'HelpCircle',
-    path: '/help',
-  },
 ];
+
