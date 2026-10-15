@@ -39,6 +39,12 @@ export const MAIN_NAV_ITEMS = [
     path: '/complaints',
   },
   {
+    id: 'audit-logs',
+    label: 'Audit Logs',
+    icon: 'ClipboardList',
+    path: '/audit-logs',
+  },
+  {
     id: 'online-store',
     label: 'Online Store',
     icon: 'Store',

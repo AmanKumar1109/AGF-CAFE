@@ -25,6 +25,7 @@ import { UsersView } from './components/users/UsersView';
 import { ReviewsView } from './components/reviews/ReviewsView';
 import { ComplaintsView } from './components/complaints/ComplaintsView';
 import { ContentManagementView } from './components/content/ContentManagementView';
+import { AuditLogsView } from './components/audit/AuditLogsView';
 import { AdminOrdersProvider } from './context/AdminOrdersContext';
 
 export default function App() {
@@ -78,6 +79,8 @@ export default function App() {
           <ReviewsView />
         ) : activeTab === 'complaints' ? (
           <ComplaintsView />
+        ) : activeTab === 'audit-logs' ? (
+          <AuditLogsView />
         ) : isContentTab ? (
           <ContentManagementView
             initialPageId={activeTab === 'content' ? 'privacy-policy' : activeTab}
