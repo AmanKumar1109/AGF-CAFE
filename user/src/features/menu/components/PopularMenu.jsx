@@ -13,20 +13,25 @@ export const PopularMenu = () => {
   useEffect(() => {
     if (!loading && popularItems.length > 0) {
       const ctx = gsap.context(() => {
-        if (cardsContainerRef.current) {
-          gsap.from(cardsContainerRef.current.children, {
-            y: 35,
-            opacity: 0,
-            duration: 0.8,
-            stagger: 0.15,
-            ease: 'power3.out',
-          });
+        if (cardsContainerRef.current?.children?.length) {
+          gsap.fromTo(
+            cardsContainerRef.current.children,
+            { y: 25, opacity: 0 },
+            {
+              y: 0,
+              opacity: 1,
+              duration: 0.5,
+              stagger: 0.08,
+              ease: 'power2.out',
+              clearProps: 'all', // Cleans up inline opacity & transforms completely so cards never stay faded
+            }
+          );
         }
       }, sectionRef);
 
       return () => ctx.revert();
     }
-  }, [popularItems, loading]);
+  }, [popularItems.length, loading]);
 
   return (
     <section

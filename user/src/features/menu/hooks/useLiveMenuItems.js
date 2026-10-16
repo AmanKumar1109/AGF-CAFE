@@ -27,9 +27,18 @@ export const useLiveMenuItems = () => {
 
           setItems(liveItems);
 
-          // Filter popular items for homepage
-          const popular = liveItems.filter((item) => item.popular === true);
-          setPopularItems(popular.length > 0 ? popular : liveItems.slice(0, 4));
+          // Build up to 8 items for homepage Popular Menu:
+          // 1. Prioritize items marked as popular or with badge 'Popular'
+          // 2. Fill with remaining uploaded items so all uploaded items (up to 8) are displayed
+          const popularList = liveItems.filter(
+            (item) => item.popular === true || item.badge === 'Popular'
+          );
+          const remainingList = liveItems.filter(
+            (item) => !item.popular && item.badge !== 'Popular'
+          );
+
+          const homeSectionItems = [...popularList, ...remainingList].slice(0, 8);
+          setPopularItems(homeSectionItems);
 
           // Extract dynamic unique categories directly from live items
           const uniqueCategories = [
