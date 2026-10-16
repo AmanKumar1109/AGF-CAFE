@@ -19,6 +19,7 @@ import { Link, useParams } from 'react-router-dom';
 import gsap from 'gsap';
 import { db } from '../../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import OrderLiveMap from '../../components/orders/OrderLiveMap';
 
 export const TrackOrder = () => {
   const { id } = useParams();
@@ -121,6 +122,9 @@ export const TrackOrder = () => {
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Orders</span>
       </Link>
+
+      {/* Live Interactive Delivery Map with Road Polyline */}
+      <OrderLiveMap order={order} />
 
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
         {/* Left Column: Vertical Timeline */}

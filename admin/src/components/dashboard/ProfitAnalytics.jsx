@@ -1,30 +1,50 @@
 import React, { useState } from 'react';
-import { MoreHorizontal, Users } from 'lucide-react';
-import { TrendBadge } from '../common/Badge';
+import { 
+  IndianRupee, 
+  TrendingUp, 
+  Calendar, 
+  ArrowUpRight, 
+  CreditCard, 
+  Banknote,
+  Bike,
+  Sparkles
+} from 'lucide-react';
 
-export const ProfitAnalytics = ({ data }) => {
-  const [hoveredPointIndex, setHoveredPointIndex] = useState(5); // Default to Jan 18 highlighted
+export const ProfitAnalytics = ({ 
+  dailyPoints = [], 
+  totalPeriodRevenue = 0,
+  codRevenue = 0,
+  onlineRevenue = 0,
+  timeframe = '30days',
+  onTimeframeChange 
+}) => {
+  const points = dailyPoints.length > 0 ? dailyPoints : [
+    { x: 0, date: '1 Oct', thisMonth: 1200, lastMonth: 1000, orders: 4 },
+    { x: 50, date: '15 Oct', thisMonth: 2800, lastMonth: 2200, orders: 9 },
+    { x: 100, date: '30 Oct', thisMonth: 3400, lastMonth: 2900, orders: 12 },
+  ];
 
-  // Chart data points
-  const points = data.currentMonthPoints;
-  const currentPoint = points[hoveredPointIndex] || points[5];
+  const [hoveredIndex, setHoveredIndex] = useState(points.length - 1);
+  const currentPoint = points[hoveredIndex] || points[points.length - 1];
 
-  // SVG dimensions
-  const width = 600;
-  const height = 180;
-  const paddingX = 20;
-  const paddingY = 20;
+  // SVG canvas dimensions
+  const width = 640;
+  const height = 190;
+  const paddingX = 25;
+  const paddingY = 25;
 
-  // Convert points to SVG coordinates
-  const getCoordinates = (index, value, maxVal = 15000) => {
-    const x = paddingX + (index / (points.length - 1)) * (width - 2 * paddingX);
-    const y = height - paddingY - (value / maxVal) * (height - 2 * paddingY);
+  // Maximum value for SVG scaling
+  const maxVal = Math.max(...points.map((p) => Math.max(p.thisMonth || 0, p.lastMonth || 0)), 1500) * 1.15;
+
+  const getCoordinates = (index, value) => {
+    const x = paddingX + (index / Math.max(1, points.length - 1)) * (width - 2 * paddingX);
+    const y = height - paddingY - (Math.min(value, maxVal) / maxVal) * (height - 2 * paddingY);
     return { x, y };
   };
 
-  // Generate SVG path strings
+  // Spline curved path generator
   const getCurvedPath = (valKey) => {
-    const coords = points.map((p, i) => getCoordinates(i, p[valKey]));
+    const coords = points.map((p, i) => getCoordinates(i, p[valKey] || 0));
     if (coords.length === 0) return '';
 
     let path = `M ${coords[0].x} ${coords[0].y}`;
@@ -47,65 +67,103 @@ export const ProfitAnalytics = ({ data }) => {
   const thisMonthPath = getCurvedPath('thisMonth');
   const lastMonthPath = getCurvedPath('lastMonth');
 
-  // Area path for gradient fill
-  const firstCoord = getCoordinates(0, points[0].thisMonth);
-  const lastCoord = getCoordinates(points.length - 1, points[points.length - 1].thisMonth);
+  // Fill area for gradient
+  const firstCoord = getCoordinates(0, points[0]?.thisMonth || 0);
+  const lastCoord = getCoordinates(points.length - 1, points[points.length - 1]?.thisMonth || 0);
   const areaPath = `${thisMonthPath} L ${lastCoord.x} ${height - paddingY} L ${firstCoord.x} ${height - paddingY} Z`;
 
-  // Active point coordinate
-  const activeCoord = getCoordinates(hoveredPointIndex, currentPoint.thisMonth);
+  const activeCoord = getCoordinates(hoveredIndex, currentPoint?.thisMonth || 0);
+
+  // Payment percentages
+  const totalPayment = (codRevenue + onlineRevenue) || 1;
+  const codPct = Math.round((codRevenue / totalPayment) * 100);
+  const onlinePct = Math.round((onlineRevenue / totalPayment) * 100);
 
   return (
-    <div className="gsap-card bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_2px_10px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.035)] transition-all duration-200">
-      {/* Top Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-slate-800 tracking-tight">
-          Total Profit
-        </h3>
-        <div className="flex items-center gap-4 text-xs text-slate-400 font-medium">
-          {/* Y Axis Guides are on right in the image */}
-        </div>
-      </div>
-
-      {/* Main Metric & Trend */}
-      <div className="flex items-center gap-3 mb-4">
-        <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
-          {data.total}
-        </span>
-        <div className="flex items-center gap-1.5">
-          <TrendBadge isPositive={data.isPositive} value={data.change} />
-          <span className="text-xs text-slate-400 font-normal">
-            {data.comparison}
+    <div className="gsap-card bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition-all duration-200 space-y-6">
+      {/* Top Header & Range Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <span className="text-xs font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1.5">
+            <TrendingUp className="w-4 h-4" /> Financial Performance
           </span>
+          <h3 className="text-lg font-black text-slate-900 tracking-tight font-serif mt-0.5">
+            Cafe Sales & Revenue Analytics (₹)
+          </h3>
+        </div>
+
+        {/* Timeframe Filter Buttons */}
+        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+          {[
+            { id: '7days', label: '7 Days' },
+            { id: '14days', label: '14 Days' },
+            { id: '30days', label: '30 Days' },
+          ].map((btn) => (
+            <button
+              key={btn.id}
+              onClick={() => onTimeframeChange && onTimeframeChange(btn.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                timeframe === btn.id
+                  ? 'bg-white text-stone-950 shadow-xs font-black'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              {btn.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Interactive Chart Container */}
-      <div className="relative w-full h-[210px] mt-2 mb-6 select-none">
-        {/* Y Axis Legend on the Right */}
-        <div className="absolute right-0 top-1 bottom-8 flex flex-col justify-between text-[11px] font-medium text-slate-400 pointer-events-none select-none text-right">
-          <span>15K</span>
-          <span>10K</span>
-          <span>5K</span>
-          <span>0</span>
+      {/* Revenue Display & Current Point HUD */}
+      <div className="flex flex-wrap items-baseline justify-between gap-4 border-b border-slate-100 pb-4">
+        <div>
+          <p className="text-xs text-slate-400 font-bold uppercase">Total Period Revenue</p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-black text-slate-900 font-serif">
+              ₹{Number(totalPeriodRevenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            </span>
+            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+              Live Firestore Sync
+            </span>
+          </div>
         </div>
 
-        {/* SVG Graph */}
-        <div className="w-[calc(100%-35px)] h-full">
+        {currentPoint && (
+          <div className="bg-amber-500/10 border border-amber-500/20 px-3.5 py-1.5 rounded-2xl text-right">
+            <p className="text-[10px] text-amber-800 font-bold uppercase">
+              {currentPoint.date} (Hovered Day)
+            </p>
+            <p className="text-sm font-black text-amber-900">
+              ₹{(currentPoint.thisMonth || 0).toLocaleString('en-IN')} &bull; {currentPoint.orders || 0} orders
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Interactive SVG Chart */}
+      <div className="relative w-full h-[200px] select-none">
+        {/* Y Axis Grid Values */}
+        <div className="absolute right-0 top-1 bottom-6 flex flex-col justify-between text-[10px] font-bold text-slate-400 pointer-events-none text-right">
+          <span>₹{Math.round(maxVal).toLocaleString('en-IN')}</span>
+          <span>₹{Math.round(maxVal / 2).toLocaleString('en-IN')}</span>
+          <span>₹0</span>
+        </div>
+
+        <div className="w-[calc(100%-48px)] h-full">
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            className="w-full h-[170px] overflow-visible"
+            className="w-full h-[160px] overflow-visible"
             preserveAspectRatio="none"
           >
             <defs>
-              <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#2563eb" stopOpacity="0.18" />
-                <stop offset="100%" stopColor="#2563eb" stopOpacity="0.00" />
+              <linearGradient id="cafeRevenueGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.28" />
+                <stop offset="100%" stopColor="#f59e0b" stopOpacity="0.00" />
               </linearGradient>
             </defs>
 
-            {/* Horizontal Grid Lines */}
-            {[0.15, 0.45, 0.75, 0.95].map((ratio, i) => (
+            {/* Horizontal Dashed Lines */}
+            {[0.2, 0.5, 0.85].map((ratio, i) => (
               <line
                 key={i}
                 x1={paddingX}
@@ -113,15 +171,15 @@ export const ProfitAnalytics = ({ data }) => {
                 x2={width - paddingX}
                 y2={height * ratio}
                 stroke="#f1f5f9"
-                strokeWidth="1"
+                strokeWidth="1.2"
                 strokeDasharray="4 4"
               />
             ))}
 
             {/* Area Fill */}
-            <path d={areaPath} fill="url(#profitGradient)" />
+            <path d={areaPath} fill="url(#cafeRevenueGrad)" />
 
-            {/* Last Month Comparison Line (Dashed) */}
+            {/* Comparison Line (Dashed) */}
             <path
               d={lastMonthPath}
               fill="none"
@@ -131,42 +189,41 @@ export const ProfitAnalytics = ({ data }) => {
               strokeLinecap="round"
             />
 
-            {/* This Month Line (Solid Blue) */}
+            {/* Main Revenue Curve (Amber) */}
             <path
               d={thisMonthPath}
               fill="none"
-              stroke="#2563eb"
-              strokeWidth="2.5"
+              stroke="#f59e0b"
+              strokeWidth="3"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className="drop-shadow-xs"
             />
 
-            {/* Vertical Marker Line at Active Point */}
+            {/* Vertical Marker Line */}
             <line
               x1={activeCoord.x}
               y1={paddingY}
               x2={activeCoord.x}
               y2={height - paddingY}
-              stroke="#94a3b8"
-              strokeWidth="1.2"
+              stroke="#f59e0b"
+              strokeWidth="1.5"
               strokeDasharray="3 3"
             />
 
-            {/* Outer Ring & Center Dot */}
+            {/* Active Dot */}
             <circle
               cx={activeCoord.x}
               cy={activeCoord.y}
-              r="6.5"
+              r="6"
               fill="#ffffff"
-              stroke="#2563eb"
-              strokeWidth="2.5"
-              className="drop-shadow-md cursor-pointer"
+              stroke="#f59e0b"
+              strokeWidth="3"
+              className="drop-shadow-md"
             />
 
-            {/* Invisible Hover Rectangles along X-axis */}
+            {/* Hover Trigger Rectangles */}
             {points.map((_, idx) => {
-              const xPos = paddingX + (idx / (points.length - 1)) * (width - 2 * paddingX);
+              const xPos = paddingX + (idx / Math.max(1, points.length - 1)) * (width - 2 * paddingX);
               const colWidth = (width - 2 * paddingX) / points.length;
               return (
                 <rect
@@ -177,95 +234,82 @@ export const ProfitAnalytics = ({ data }) => {
                   height={height}
                   fill="transparent"
                   className="cursor-pointer"
-                  onMouseEnter={() => setHoveredPointIndex(idx)}
+                  onMouseEnter={() => setHoveredIndex(idx)}
                 />
               );
             })}
           </svg>
 
-          {/* Floating Tooltip matching image */}
-          <div
-            className="absolute z-20 pointer-events-none transition-all duration-150 ease-out"
-            style={{
-              left: `clamp(10px, ${(activeCoord.x / width) * 100}%, calc(100% - 170px))`,
-              top: `${Math.max(10, (activeCoord.y / height) * 150 - 65)}px`,
-              transform: 'translateX(-50%)',
-            }}
-          >
-            <div className="bg-white/95 backdrop-blur-md rounded-xl border border-slate-200/90 shadow-lg px-3 py-2 text-left min-w-[150px]">
-              <div className="text-[11px] font-semibold text-slate-800 mb-1.5 border-b border-slate-100 pb-1">
-                {currentPoint.date}, 2025
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="w-2.5 h-[2px] bg-blue-600 rounded-full" />
-                  <span className="font-semibold text-slate-800">
-                    ${currentPoint.thisMonth.toLocaleString()}
-                  </span>
-                  <span className="text-slate-400 text-[10px]">this month</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[11px]">
-                  <span className="w-2.5 h-[2px] bg-slate-400 rounded-full border-t border-dashed" />
-                  <span className="font-semibold text-slate-600">
-                    ${currentPoint.lastMonth.toLocaleString()}
-                  </span>
-                  <span className="text-slate-400 text-[10px]">last month</span>
-                </div>
+          {/* Floating Tooltip */}
+          {currentPoint && (
+            <div
+              className="absolute z-20 pointer-events-none transition-all duration-100 ease-out"
+              style={{
+                left: `clamp(10px, ${(activeCoord.x / width) * 100}%, calc(100% - 150px))`,
+                top: `${Math.max(5, (activeCoord.y / height) * 140 - 55)}px`,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <div className="bg-slate-900/95 backdrop-blur-md rounded-xl text-white px-3 py-1.5 shadow-xl border border-white/10 text-center min-w-[120px]">
+                <p className="text-[10px] text-amber-400 font-bold">{currentPoint.date}</p>
+                <p className="text-xs font-black text-white">
+                  ₹{(currentPoint.thisMonth || 0).toLocaleString('en-IN')}
+                </p>
+                <p className="text-[9px] text-slate-400">{currentPoint.orders || 0} orders placed</p>
               </div>
             </div>
-          </div>
+          )}
 
           {/* X Axis Date Labels */}
-          <div className="flex justify-between px-2 pt-2 text-[11px] font-medium text-slate-400">
-            <span>1 Jan</span>
-            <span>8 Jan</span>
-            <span>15 Jan</span>
-            <span>22 Jan</span>
-            <span>29 Jan</span>
+          <div className="flex justify-between px-2 pt-1 text-[11px] font-bold text-slate-400">
+            <span>{points[0]?.date || 'Start'}</span>
+            <span>{points[Math.floor(points.length / 2)]?.date || 'Mid'}</span>
+            <span>{points[points.length - 1]?.date || 'Today'}</span>
           </div>
         </div>
       </div>
 
-      {/* Customers Section Divider & Sub-cards */}
-      <div className="pt-4 border-t border-slate-100/90">
-        <div className="flex items-center justify-between mb-3.5">
-          <h4 className="text-sm font-semibold text-slate-800 tracking-tight">
-            Customers
+      {/* Revenue Channels & Payment Method Split */}
+      <div className="pt-4 border-t border-slate-100 space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+            Payment & Channel Breakdown
           </h4>
-          <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition cursor-pointer">
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+          <span className="text-[11px] text-slate-400 font-semibold">Total Revenue Distribution</span>
         </div>
 
-        {/* 3 Customer Segmentation Pillars */}
-        <div className="grid grid-cols-3 gap-3">
-          {data.customerSegments.map((segment) => (
-            <div
-              key={segment.id}
-              className="relative p-3 rounded-xl bg-slate-50/60 hover:bg-slate-50 transition-colors border-l-3"
-              style={{ borderLeftColor: segment.color }}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-bold text-slate-900 tracking-tight">
-                  {segment.count}
-                </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Cash on Delivery Card */}
+          <div className="p-3.5 rounded-2xl bg-amber-50/50 border border-amber-200/60 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-stone-950 flex items-center justify-center font-bold">
+                <Banknote className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium text-slate-400 mt-0.5 block">
-                {segment.label}
-              </span>
-              
-              {/* Bottom colored mini progress bar */}
-              <div className="w-full bg-slate-200/70 h-1 rounded-full mt-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: segment.progressWidth,
-                    backgroundColor: segment.color,
-                  }}
-                />
+              <div>
+                <p className="text-xs font-bold text-slate-800">Cash on Delivery (COD)</p>
+                <p className="text-[11px] text-slate-500">{codPct}% of total orders</p>
               </div>
             </div>
-          ))}
+            <span className="text-sm font-black text-amber-900">
+              ₹{Number(codRevenue || 0).toLocaleString('en-IN')}
+            </span>
+          </div>
+
+          {/* Prepaid Card */}
+          <div className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200/60 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-800">Online & Prepaid</p>
+                <p className="text-[11px] text-slate-500">{onlinePct}% of total orders</p>
+              </div>
+            </div>
+            <span className="text-sm font-black text-emerald-900">
+              ₹{Number(onlineRevenue || 0).toLocaleString('en-IN')}
+            </span>
+          </div>
         </div>
       </div>
     </div>

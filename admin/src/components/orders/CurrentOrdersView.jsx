@@ -14,11 +14,18 @@ import {
   UtensilsCrossed,
   Search,
   Check,
-  RotateCcw
+  RotateCcw,
+  Navigation,
+  Radio
 } from 'lucide-react';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../firebase';
 import gsap from 'gsap';
+
+const DeliveryMapModal = React.lazy(() => import('./DeliveryMapModal'));
+const FleetRadarModal = React.lazy(() => import('../staff/FleetRadarModal'));
 
 export const CurrentOrdersView = () => {
   const { 
@@ -35,13 +42,26 @@ export const CurrentOrdersView = () => {
   const [cancellingOrder, setCancellingOrder] = useState(null);
   const [cancelReason, setCancelReason] = useState('Out of stock / ingredients');
   const [assigningOrder, setAssigningOrder] = useState(null);
-  const [partnerForm, setPartnerForm] = useState({ name: 'Rider Rahul', phone: '+91 98765 43210' });
+  const [partnerForm, setPartnerForm] = useState({ name: '', phone: '', vehicle: '', id: null });
+  const [staffList, setStaffList] = useState([]);
   const [otpVerifyOrder, setOtpVerifyOrder] = useState(null);
   const [inputOtp, setInputOtp] = useState('');
   const [otpError, setOtpError] = useState('');
   const [viewDetailsOrder, setViewDetailsOrder] = useState(null);
+  const [selectedOrderForMap, setSelectedOrderForMap] = useState(null);
+  const [isFleetRadarOpen, setIsFleetRadarOpen] = useState(false);
 
   const containerRef = useRef(null);
+
+  // Subscribe to delivery fleet
+  useEffect(() => {
+    const qStaff = query(collection(db, 'staff'), where('role', '==', 'delivery'));
+    const unsub = onSnapshot(qStaff, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setStaffList(list);
+    }, (err) => console.warn('Orders dispatch staff listener error:', err));
+    return () => unsub();
+  }, []);
 
   const activeOrders = orders.filter(
     o => o.status?.toLowerCase() !== 'delivered' && o.status?.toLowerCase() !== 'cancelled'
@@ -149,9 +169,20 @@ export const CurrentOrdersView = () => {
           })}
         </div>
 
-        <span className="text-xs font-bold text-slate-500">
-          Live Real-time Pipeline &bull; {filteredOrders.length} Orders
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-slate-500 hidden sm:inline">
+            Live Pipeline &bull; {filteredOrders.length} Orders
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setIsFleetRadarOpen(true)}
+            className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-sm hover:shadow-md transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <Radio className="w-4 h-4 animate-pulse text-stone-950" />
+            <span>Live Fleet Radar ("God View")</span>
+          </button>
+        </div>
       </div>
 
       {/* Orders Grid */}
@@ -198,15 +229,27 @@ export const CurrentOrdersView = () => {
                       <p className="text-xs font-bold text-slate-700 mt-1">{customerName}</p>
                     </div>
 
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      isReceived 
-                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
-                        : isPreparing
-                        ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                        : 'bg-purple-100 text-purple-800 border border-purple-300'
-                    }`}>
-                      {order.status || 'Received'}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedOrderForMap(order)}
+                        className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-400/40 rounded-xl text-[10px] font-black flex items-center gap-1 transition-colors cursor-pointer"
+                        title="View Delivery Route & Distance on Map"
+                      >
+                        <Navigation className="w-3 h-3 text-amber-600" />
+                        <span>{order.distanceKm ? `${parseFloat(order.distanceKm).toFixed(1)} km` : 'Map'}</span>
+                      </button>
+
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        isReceived 
+                          ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                          : isPreparing
+                          ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                          : 'bg-purple-100 text-purple-800 border border-purple-300'
+                      }`}>
+                        {order.status || 'Received'}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Customer Info */}
@@ -334,6 +377,15 @@ export const CurrentOrdersView = () => {
                     )}
 
                     <button
+                      onClick={() => setSelectedOrderForMap(order)}
+                      className="p-2.5 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded-xl transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+                      title="View Live Delivery Route & Road Map"
+                    >
+                      <Navigation className="w-4 h-4 text-blue-600" />
+                      <span className="hidden sm:inline">Map</span>
+                    </button>
+
+                    <button
                       onClick={() => setPrintingOrder(order)}
                       className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl transition-colors cursor-pointer"
                       title="Print Thermal Bill"
@@ -369,17 +421,62 @@ export const CurrentOrdersView = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-black text-slate-800 text-base">Assign Delivery Rider</h3>
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                  <Bike className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-800 text-sm">Assign Delivery Rider</h3>
+                  <p className="text-[10px] text-slate-400 font-bold">Order #{assigningOrder.orderId || assigningOrder.id.slice(0, 8)}</p>
+                </div>
+              </div>
               <button onClick={() => setAssigningOrder(null)} className="p-1 text-slate-400 hover:text-slate-700">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleConfirmAssign} className="space-y-4">
+              {staffList.length > 0 && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Choose from Registered Fleet
+                  </label>
+                  <select
+                    onChange={(e) => {
+                      const selId = e.target.value;
+                      if (selId === 'custom') {
+                        setPartnerForm({ name: '', phone: '', vehicle: '', id: null });
+                      } else {
+                        const sel = staffList.find(s => s.id === selId);
+                        if (sel) {
+                          setPartnerForm({
+                            id: sel.id,
+                            name: sel.name,
+                            phone: sel.phone,
+                            vehicle: sel.vehicle || ''
+                          });
+                        }
+                      }
+                    }}
+                    value={partnerForm.id || (partnerForm.name ? 'custom' : '')}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="">-- Select Available Rider --</option>
+                    {staffList.map((rider) => (
+                      <option key={rider.id} value={rider.id}>
+                        {rider.status === 'Available' ? '🟢' : '🟡'} {rider.name} ({rider.vehicle || 'Bike'}) - {rider.status}
+                      </option>
+                    ))}
+                    <option value="custom">✏️ Enter Custom Rider Manually</option>
+                  </select>
+                </div>
+              )}
+
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Rider Name</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Rider Name *</label>
                 <input
                   type="text"
+                  placeholder="e.g. Rahul Verma"
                   value={partnerForm.name}
                   onChange={(e) => setPartnerForm({ ...partnerForm, name: e.target.value })}
                   required
@@ -388,9 +485,10 @@ export const CurrentOrdersView = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Rider Phone</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Rider Phone *</label>
                 <input
                   type="tel"
+                  placeholder="+91 98765 43210"
                   value={partnerForm.phone}
                   onChange={(e) => setPartnerForm({ ...partnerForm, phone: e.target.value })}
                   required
@@ -402,13 +500,13 @@ export const CurrentOrdersView = () => {
                 <button
                   type="button"
                   onClick={() => setAssigningOrder(null)}
-                  className="flex-1 py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl"
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 py-2.5 bg-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-sm"
+                  className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-sm transition-all"
                 >
                   Confirm Dispatch
                 </button>
@@ -506,6 +604,26 @@ export const CurrentOrdersView = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Delivery Map Modal */}
+      {selectedOrderForMap && (
+        <React.Suspense fallback={null}>
+          <DeliveryMapModal
+            order={selectedOrderForMap}
+            onClose={() => setSelectedOrderForMap(null)}
+          />
+        </React.Suspense>
+      )}
+
+      {/* Fleet Radar Modal */}
+      {isFleetRadarOpen && (
+        <React.Suspense fallback={null}>
+          <FleetRadarModal
+            isOpen={isFleetRadarOpen}
+            onClose={() => setIsFleetRadarOpen(false)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

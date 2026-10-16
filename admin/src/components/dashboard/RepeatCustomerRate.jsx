@@ -1,24 +1,25 @@
-import React, { useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import React from 'react';
+import { Users, Heart, Sparkles, TrendingUp } from 'lucide-react';
 
-export const RepeatCustomerRate = ({ data }) => {
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const percentage = data.percentage || 68;
-  const target = data.target || 80;
+export const RepeatCustomerRate = ({ 
+  repeatRate = 68, 
+  aov = 340,
+  totalCustomers = 0 
+}) => {
+  const percentage = Math.min(100, Math.max(5, repeatRate));
+  const target = 80;
 
   // Number of radial ticks in semi-circle arch
-  const totalTicks = 32;
+  const totalTicks = 30;
   const activeTicksCount = Math.round((percentage / 100) * totalTicks);
 
   // SVG dimensions for gauge
   const cx = 110;
-  const cy = 95;
-  const innerRadius = 64;
-  const outerRadius = 82;
+  const cy = 90;
+  const innerRadius = 60;
+  const outerRadius = 78;
 
-  // Generate tick marks for 180 degree semi-circle arc (from 180° on left to 0° on right)
   const ticks = Array.from({ length: totalTicks }, (_, index) => {
-    // Angle in degrees from 180 to 0
     const angleDeg = 180 - (index / (totalTicks - 1)) * 180;
     const angleRad = (angleDeg * Math.PI) / 180;
 
@@ -33,21 +34,24 @@ export const RepeatCustomerRate = ({ data }) => {
   });
 
   return (
-    <div className="gsap-card bg-white rounded-2xl border border-slate-100 p-5 shadow-[0_2px_10px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.035)] transition-all duration-200 flex flex-col justify-between">
+    <div className="gsap-card bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
-          Repeat Customer Rate
-        </h3>
-        <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition cursor-pointer">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-black text-slate-900 tracking-tight font-serif">
+            Customer Retention & Loyalty
+          </h3>
+          <p className="text-[11px] text-slate-400 font-medium">Patrons ordering more than once</p>
+        </div>
+        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
+          <Heart className="w-4 h-4 fill-purple-500/20" />
+        </div>
       </div>
 
       {/* Radial Semi-circle Gauge */}
       <div className="flex flex-col items-center justify-center my-1 select-none">
-        <div className="relative w-[220px] h-[115px] flex items-center justify-center">
-          <svg viewBox="0 0 220 115" className="w-full h-full overflow-visible">
+        <div className="relative w-[210px] h-[105px] flex items-center justify-center">
+          <svg viewBox="0 0 220 105" className="w-full h-full overflow-visible">
             {ticks.map((tick) => (
               <line
                 key={tick.index}
@@ -55,49 +59,42 @@ export const RepeatCustomerRate = ({ data }) => {
                 y1={tick.y1}
                 x2={tick.x2}
                 y2={tick.y2}
-                stroke={tick.isActive ? '#10b981' : '#e2e8f0'}
-                strokeWidth="3.2"
+                stroke={tick.isActive ? '#f59e0b' : '#e2e8f0'}
+                strokeWidth="3.4"
                 strokeLinecap="round"
-                className="transition-all duration-300"
               />
             ))}
           </svg>
 
-          {/* Center Text inside the Semi-circle */}
-          <div className="absolute bottom-1 flex flex-col items-center justify-center text-center">
-            <span className="text-3xl font-extrabold text-slate-900 tracking-tight">
+          {/* Central Percentage */}
+          <div className="absolute bottom-1 flex flex-col items-center justify-center">
+            <span className="text-3xl font-black text-slate-900 font-serif leading-none">
               {percentage}%
             </span>
-            <span className="text-[11px] text-slate-400 font-medium mt-0.5">
-              {data.label || `On track for ${target}% target`}
+            <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 mt-1">
+              Loyal Patrons
             </span>
           </div>
         </div>
+
+        {/* Target Progress Bar */}
+        <p className="text-xs font-bold text-slate-600 mt-2 text-center">
+          Target: <strong className="text-slate-900">{target}%</strong> retention benchmark
+        </p>
       </div>
 
-      {/* Bottom Show Details Button */}
-      <div className="flex justify-center mt-3">
-        <button
-          onClick={() => setShowDetailsModal(!showDetailsModal)}
-          className="bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold px-4 py-1.5 rounded-xl shadow-2xs transition-all active:scale-[0.98] cursor-pointer"
-        >
-          Show details
-        </button>
-      </div>
-
-      {/* Details dropdown preview */}
-      {showDetailsModal && (
-        <div className="mt-3 p-3 bg-slate-50 rounded-xl text-xs space-y-1 text-slate-600 border border-slate-100">
-          <div className="flex justify-between">
-            <span>New returning this month:</span>
-            <span className="font-semibold text-slate-800">1,940 customers</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Customer Retention Index:</span>
-            <span className="font-semibold text-emerald-600">+12% vs avg</span>
-          </div>
+      {/* Average Order Value (AOV) Sub-card */}
+      <div className="bg-slate-50 border border-slate-100 rounded-2xl p-3 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase font-bold text-slate-400">Avg. Basket Size (AOV)</p>
+          <p className="text-sm font-black text-slate-900 font-serif mt-0.5">
+            ₹{Number(aov || 0).toLocaleString('en-IN')}
+          </p>
         </div>
-      )}
+        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200">
+          Healthy Cafe Ratio
+        </span>
+      </div>
     </div>
   );
 };

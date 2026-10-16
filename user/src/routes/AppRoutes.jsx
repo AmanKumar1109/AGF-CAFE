@@ -21,6 +21,7 @@ import { ReferEarn } from '../pages/dashboard/ReferEarn';
 import { MyComplaints } from '../pages/dashboard/MyComplaints';
 import { Profile } from '../pages/dashboard/Profile';
 import { HelpSupport } from '../pages/dashboard/HelpSupport';
+import { RiderDashboardPage } from '../pages/delivery/RiderDashboard';
 import { useAuth } from '../context/useAuth';
 import { User } from 'lucide-react';
 
@@ -61,6 +62,10 @@ const ProtectedRoute = ({ children }) => {
 export const AppRoutes = () => {
   return (
     <Routes>
+      {/* Standalone Dedicated Delivery Boy Panel Routes */}
+      <Route path="/rider" element={<RiderDashboardPage />} />
+      <Route path="/delivery" element={<RiderDashboardPage />} />
+
       {/* Public Pages inside RootLayout */}
       <Route path="/" element={<RootLayout />}>
         <Route index element={<HomePage />} />

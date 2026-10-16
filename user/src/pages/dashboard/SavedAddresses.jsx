@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import gsap from 'gsap';
 import { useAuth } from '../../context/useAuth';
+import LocationPickerModal from '../../components/location/LocationPickerModal';
 
 export const SavedAddresses = () => {
   const containerRef = useRef(null);
@@ -22,6 +23,7 @@ export const SavedAddresses = () => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
   
   const [addressForm, setAddressForm] = useState({
     name: '',
@@ -99,6 +101,19 @@ export const SavedAddresses = () => {
       lat: null,
       lng: null
     });
+  };
+
+  const handleLocationConfirmed = (loc) => {
+    setAddressForm(prev => ({
+      ...prev,
+      street: loc.street || prev.street,
+      locality: loc.landmark || prev.locality,
+      city: loc.city || prev.city,
+      pincode: loc.pincode || prev.pincode,
+      lat: loc.lat,
+      lng: loc.lng,
+      type: loc.type || prev.type
+    }));
   };
 
   // Browser Geolocation auto-fill with reverse geocoding
@@ -185,18 +200,34 @@ export const SavedAddresses = () => {
             </button>
           </div>
 
-          {/* Quick GPS Button */}
-          <div className="mb-6">
+          {/* Quick Location Action Buttons */}
+          <div className="mb-6 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsLocationPickerOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
+            >
+              <MapPin className="w-4 h-4 stroke-[2.5]" />
+              <span>Pin Exact Point on Map (5 KM)</span>
+            </button>
+
             <button
               type="button"
               onClick={handleUseCurrentLocation}
               disabled={isLocating}
               className="flex items-center gap-2 px-5 py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 border border-stone-200 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-50 cursor-pointer"
             >
-              {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4" />}
+              {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Navigation className="w-4 h-4 text-amber-500" />}
               <span>{isLocating ? 'Detecting Location...' : 'Use Current GPS Location'}</span>
             </button>
           </div>
+
+          {addressForm.lat && addressForm.lng && (
+            <div className="mb-5 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Map Coordinates Saved: {addressForm.lat}, {addressForm.lng} (Inside 5 KM Zone)</span>
+            </div>
+          )}
 
           <form onSubmit={handleSaveAddress} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -376,6 +407,39 @@ export const SavedAddresses = () => {
                   <p className="text-xs text-stone-600 mt-2.5 leading-relaxed font-medium">
                     {[addr.houseNo, addr.street, addr.locality, addr.city, addr.pincode].filter(Boolean).join(', ')}
                   </p>
+
+                  <div className="mt-2.5 pt-2 border-t border-stone-100/80 flex items-center justify-between">
+                    {addr.lat && addr.lng ? (
+                      <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>📍 GPS Pinned ({addr.lat.toFixed(4)}, {addr.lng.toFixed(4)})</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAddressForm({
+                            name: addr.name || '',
+                            phone: addr.phone || '',
+                            houseNo: addr.houseNo || '',
+                            street: addr.street || '',
+                            locality: addr.locality || '',
+                            city: addr.city || 'Baharagora',
+                            state: addr.state || 'Jharkhand',
+                            pincode: addr.pincode || '832101',
+                            type: addr.type || 'Home',
+                            lat: null,
+                            lng: null,
+                          });
+                          setIsLocationPickerOpen(true);
+                        }}
+                        className="text-[11px] font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
+                      >
+                        <MapPin className="w-3 h-3" />
+                        <span>Pin Exact Location on Map</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="pt-5 mt-5 border-t border-stone-100 flex items-center justify-between gap-3">
@@ -405,6 +469,14 @@ export const SavedAddresses = () => {
           })}
         </div>
       )}
+
+      {/* Interactive Map Picker Modal */}
+      <LocationPickerModal
+        isOpen={isLocationPickerOpen}
+        onClose={() => setIsLocationPickerOpen(false)}
+        onConfirm={handleLocationConfirmed}
+        initialLocation={addressForm}
+      />
     </div>
   );
 };

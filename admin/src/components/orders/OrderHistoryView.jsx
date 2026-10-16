@@ -10,11 +10,14 @@ import {
   Filter,
   Eye,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Navigation
 } from 'lucide-react';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
 import gsap from 'gsap';
+
+const DeliveryMapModal = React.lazy(() => import('./DeliveryMapModal'));
 
 export const OrderHistoryView = () => {
   const { orders } = useAdminOrders();
@@ -23,6 +26,7 @@ export const OrderHistoryView = () => {
   const [dateFilter, setDateFilter] = useState('');
   const [printingOrder, setPrintingOrder] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedOrderForMap, setSelectedOrderForMap] = useState(null);
 
   const tableRef = useRef(null);
 
@@ -240,6 +244,13 @@ export const OrderHistoryView = () => {
                       <td className="p-4 pr-6 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => setSelectedOrderForMap(order)}
+                            className="p-2 hover:bg-blue-50 rounded-lg text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                            title="View Road Route & Map"
+                          >
+                            <Navigation className="w-4 h-4" />
+                          </button>
+                          <button
                             onClick={() => setSelectedOrder(order)}
                             className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
                             title="View Details"
@@ -331,6 +342,13 @@ export const OrderHistoryView = () => {
 
             <div className="pt-2 flex gap-3">
               <button
+                onClick={() => setSelectedOrderForMap(selectedOrder)}
+                className="flex-1 py-3 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black text-xs uppercase tracking-wider rounded-xl transition-all border border-blue-200 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Navigation className="w-4 h-4" />
+                <span>View Route on Map</span>
+              </button>
+              <button
                 onClick={() => {
                   setPrintingOrder(selectedOrder);
                 }}
@@ -350,6 +368,16 @@ export const OrderHistoryView = () => {
           order={printingOrder}
           onClose={() => setPrintingOrder(null)}
         />
+      )}
+
+      {/* Delivery Map Modal */}
+      {selectedOrderForMap && (
+        <React.Suspense fallback={null}>
+          <DeliveryMapModal
+            order={selectedOrderForMap}
+            onClose={() => setSelectedOrderForMap(null)}
+          />
+        </React.Suspense>
       )}
     </div>
   );

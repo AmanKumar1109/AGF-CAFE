@@ -24,6 +24,17 @@ import { db } from '../../../firebase';
 import { useCart } from '../../../context/useCart';
 import { useAuth } from '../../../context/useAuth';
 import { Button } from '../../../components/ui/Button';
+import { sendOrderReceivedEmail } from '../../../utils/emailTemplates';
+import LocationPickerModal from '../../../components/location/LocationPickerModal';
+import { 
+  checkDeliveryServiceable, 
+  checkAddressTextServiceability, 
+  calculateDistance, 
+  calculateETA,
+  resolveOrderCoordinates,
+  AGF_CAFE_HUB, 
+  MAX_DELIVERY_RADIUS_KM 
+} from '../../../utils/locationUtils';
 
 export const CheckoutModal = ({ isOpen, onClose }) => {
   const {
@@ -44,12 +55,14 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     handleApplyPromo,
     handleRemovePromo,
   } = useCart();
-  const { currentUser, userProfile, addAddress, setIsAuthModalOpen } = useAuth();
+  const { currentUser, userProfile, addAddress, updateAddress, setIsAuthModalOpen } = useAuth();
 
   // Address state
   const [activeAddressId, setActiveAddressId] = useState(null);
   const [showNewAddressForm, setShowNewAddressForm] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isLocationPickerOpen, setIsLocationPickerOpen] = useState(false);
+  const [geoCheckResult, setGeoCheckResult] = useState(null);
 
   // Form for new address
   const [addressForm, setAddressForm] = useState({
@@ -61,6 +74,9 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     city: 'Baharagora',
     pincode: '832101',
     type: 'Home',
+    lat: null,
+    lng: null,
+    deliveryInstructions: '',
   });
 
   const [paymentMethod, setPaymentMethod] = useState('cash'); // 'cash' | 'online'
@@ -167,6 +183,47 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     );
   };
 
+  // Handle Location confirmed from LocationPickerModal
+  const handleLocationConfirmed = async (locationData) => {
+    setAddressForm((prev) => ({
+      ...prev,
+      street: locationData.street || prev.street,
+      houseNo: locationData.houseNo || prev.houseNo,
+      locality: locationData.landmark || prev.locality,
+      city: locationData.city || prev.city,
+      pincode: locationData.pincode || prev.pincode,
+      lat: locationData.lat,
+      lng: locationData.lng,
+      deliveryInstructions: locationData.deliveryInstructions || prev.deliveryInstructions,
+    }));
+
+    // If an existing address is selected, also persist coordinates to it directly
+    if (activeAddress && activeAddress.id && updateAddress) {
+      activeAddress.lat = locationData.lat;
+      activeAddress.lng = locationData.lng;
+      try {
+        await updateAddress(activeAddress.id, {
+          lat: locationData.lat,
+          lng: locationData.lng,
+          street: locationData.street || activeAddress.street || activeAddress.address || '',
+          locality: locationData.landmark || activeAddress.locality || '',
+        });
+      } catch (err) {
+        console.warn('Could not update activeAddress lat/lng in profile:', err);
+      }
+    }
+
+    setGeoCheckResult({
+      isServiceable: locationData.isServiceable,
+      distanceKm: locationData.distanceKm,
+      eta: locationData.eta,
+    });
+
+    if (showToast) {
+      showToast(`📍 Doorstep location pinned (${locationData.distanceKm} km from cafe • ${locationData.eta})!`);
+    }
+  };
+
   const handleSaveAndUseAddress = async () => {
     if (!currentUser) {
       if (showToast) showToast('Please sign in first to save your address! ☕');
@@ -192,6 +249,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
         city: addressForm.city,
         pincode: addressForm.pincode,
         type: addressForm.type || 'Home',
+        lat: addressForm.lat || null,
+        lng: addressForm.lng || null,
         isPrimary: addresses.length === 0,
       });
 
@@ -221,6 +280,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     let finalShippingAddress = null;
     let finalCustomerName = '';
     let finalCustomerPhone = '';
+    let resolvedLat = null;
+    let resolvedLng = null;
 
     // If using new address form
     if (showNewAddressForm || !hasSavedAddress) {
@@ -231,6 +292,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
 
       finalCustomerName = addressForm.name || userProfile?.name || currentUser?.displayName || 'Valued Customer';
       finalCustomerPhone = addressForm.phone || userProfile?.phone || '';
+      resolvedLat = addressForm.lat ? parseFloat(addressForm.lat) : null;
+      resolvedLng = addressForm.lng ? parseFloat(addressForm.lng) : null;
 
       finalShippingAddress = {
         fullName: finalCustomerName,
@@ -241,6 +304,9 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
         city: addressForm.city,
         pincode: addressForm.pincode,
         type: addressForm.type || 'Home',
+        lat: resolvedLat,
+        lng: resolvedLng,
+        deliveryInstructions: addressForm.deliveryInstructions || '',
         addressLine1: [addressForm.houseNo, addressForm.street, addressForm.locality, addressForm.city, addressForm.pincode].filter(Boolean).join(', ')
       };
 
@@ -256,6 +322,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
             city: addressForm.city,
             pincode: addressForm.pincode,
             type: addressForm.type || 'Home',
+            lat: resolvedLat,
+            lng: resolvedLng,
             isPrimary: addresses.length === 0,
           });
           if (newId) {
@@ -269,6 +337,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       // Using existing saved address
       finalCustomerName = activeAddress.name || userProfile?.name || currentUser?.displayName || 'Valued Customer';
       finalCustomerPhone = activeAddress.phone || userProfile?.phone || '';
+      resolvedLat = activeAddress.lat ? parseFloat(activeAddress.lat) : (addressForm.lat ? parseFloat(addressForm.lat) : null);
+      resolvedLng = activeAddress.lng ? parseFloat(activeAddress.lng) : (addressForm.lng ? parseFloat(addressForm.lng) : null);
 
       finalShippingAddress = {
         fullName: finalCustomerName,
@@ -279,9 +349,50 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
         city: activeAddress.city || 'Baharagora',
         pincode: activeAddress.pincode || '832101',
         type: activeAddress.type || 'Home',
+        lat: resolvedLat,
+        lng: resolvedLng,
+        deliveryInstructions: activeAddress.deliveryInstructions || addressForm.deliveryInstructions || '',
         addressLine1: [activeAddress.houseNo, activeAddress.street || activeAddress.address, activeAddress.locality, activeAddress.city, activeAddress.pincode].filter(Boolean).join(', ')
       };
     }
+
+    // 5 KM DELIVERY RADIUS & TEXT SERVICEABILITY CHECK
+    const textServiceCheck = checkAddressTextServiceability(finalShippingAddress);
+    if (!textServiceCheck.isServiceable) {
+      if (showToast) showToast(textServiceCheck.reason);
+      return;
+    }
+
+    // Guarantee coordinates resolution from address text / landmarks if resolvedLat is null
+    if (!resolvedLat || !resolvedLng || isNaN(resolvedLat) || isNaN(resolvedLng)) {
+      const fallbackResolved = await resolveOrderCoordinates({
+        deliveryAddress: finalShippingAddress.addressLine1,
+        address: finalShippingAddress.addressLine1,
+        shippingAddress: finalShippingAddress,
+      });
+      if (fallbackResolved && fallbackResolved.lat && fallbackResolved.lng) {
+        resolvedLat = fallbackResolved.lat;
+        resolvedLng = fallbackResolved.lng;
+        finalShippingAddress.lat = resolvedLat;
+        finalShippingAddress.lng = resolvedLng;
+      }
+    }
+
+    if (resolvedLat && resolvedLng) {
+      const radiusCheck = checkDeliveryServiceable(resolvedLat, resolvedLng);
+      if (!radiusCheck.isServiceable) {
+        if (showToast) {
+          showToast(`🚫 Delivery Unavailable: Address is ${radiusCheck.distanceKm} km away. AGF Cafe delivers strictly within 5 km!`);
+        }
+        return;
+      }
+    }
+
+    // Calculate road / aerial distance and ETA
+    const calculatedDistanceKm = resolvedLat && resolvedLng 
+      ? calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, resolvedLat, resolvedLng)
+      : (geoCheckResult?.distanceKm || 2.5);
+    const calculatedETA = calculateETA(calculatedDistanceKm);
 
     setIsSubmitting(true);
     const generatedId = `AGF-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -295,6 +406,12 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       customerPhone: finalCustomerPhone,
       deliveryAddress: finalShippingAddress.addressLine1,
       shippingAddress: finalShippingAddress,
+      customerCoords: resolvedLat && resolvedLng ? { lat: resolvedLat, lng: resolvedLng } : { lat: AGF_CAFE_HUB.lat, lng: AGF_CAFE_HUB.lng },
+      lat: resolvedLat || AGF_CAFE_HUB.lat,
+      lng: resolvedLng || AGF_CAFE_HUB.lng,
+      distanceKm: calculatedDistanceKm,
+      deliveryEta: calculatedETA,
+      deliveryInstructions: finalShippingAddress.deliveryInstructions || '',
       paymentMethod: paymentMethod,
       items: cart,
       subtotal: subtotal,
@@ -312,6 +429,11 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
 
     try {
       await addDoc(collection(db, 'orders'), orderPayload);
+
+      // Trigger Order Received Confirmation Email
+      if (orderPayload.customerEmail) {
+        sendOrderReceivedEmail(orderPayload).catch(console.warn);
+      }
 
       // If user is signed in and used a coupon, record it in usedCoupons
       if (appliedCoupon && currentUser) {
@@ -550,6 +672,43 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                           <span>{activeAddress.phone}</span>
                         </p>
                       )}
+
+                      {/* Doorstep Pin Status / Set Pin Button */}
+                      <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-emerald-500/20">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAddressForm({
+                              name: activeAddress.name || '',
+                              phone: activeAddress.phone || '',
+                              houseNo: activeAddress.houseNo || '',
+                              street: activeAddress.street || activeAddress.address || '',
+                              locality: activeAddress.locality || '',
+                              city: activeAddress.city || 'Baharagora',
+                              pincode: activeAddress.pincode || '832101',
+                              type: activeAddress.type || 'Home',
+                              lat: activeAddress.lat || null,
+                              lng: activeAddress.lng || null,
+                              deliveryInstructions: activeAddress.deliveryInstructions || '',
+                            });
+                            setIsLocationPickerOpen(true);
+                          }}
+                          className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                        >
+                          <MapPin className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>{activeAddress.lat ? 'Adjust Doorstep Pin (5 KM)' : 'Pin on Map (5 KM)'}</span>
+                        </button>
+                        {activeAddress.lat && activeAddress.lng ? (
+                          <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Doorstep Pinned ({calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, activeAddress.lat, activeAddress.lng)} km)</span>
+                          </span>
+                        ) : (
+                          <span className="text-[11px] font-medium text-amber-300/80">
+                            📌 Pin your entrance for fast & accurate doorstep delivery
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Switch between other saved addresses if multiple exist */}
@@ -603,20 +762,42 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleUseCurrentLocation}
-                        disabled={isLocating}
-                        className="px-3 py-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 self-start sm:self-auto"
-                      >
-                        {isLocating ? (
-                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Navigation className="w-3.5 h-3.5" />
-                        )}
-                        <span>{isLocating ? 'Detecting...' : 'Auto-detect Location'}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                        <button
+                          type="button"
+                          onClick={() => setIsLocationPickerOpen(true)}
+                          className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          <MapPin className="w-3.5 h-3.5 stroke-[2.5]" />
+                          <span>Pin on Map (5 KM)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleUseCurrentLocation}
+                          disabled={isLocating}
+                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 border border-stone-700 text-stone-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {isLocating ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Navigation className="w-3.5 h-3.5 text-amber-400" />
+                          )}
+                          <span>{isLocating ? 'Detecting...' : 'Auto-detect GPS'}</span>
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Geo Verification Badge if pinned */}
+                    {geoCheckResult && (
+                      <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-300">
+                        <span className="flex items-center gap-1.5">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>5 KM Radius Verified: {geoCheckResult.distanceKm} km from cafe</span>
+                        </span>
+                        <span className="text-amber-400 font-black">{geoCheckResult.eta}</span>
+                      </div>
+                    )}
 
                     {/* Address Form Inputs */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -988,6 +1169,14 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
         </div>
 
       </div>
+
+      {/* Interactive Map Picker Modal with 5 KM Geofence */}
+      <LocationPickerModal
+        isOpen={isLocationPickerOpen}
+        onClose={() => setIsLocationPickerOpen(false)}
+        onConfirm={handleLocationConfirmed}
+        initialLocation={addressForm}
+      />
     </div>
   );
 };

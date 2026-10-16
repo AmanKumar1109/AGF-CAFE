@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   X,
   Phone,
@@ -16,6 +16,7 @@ import {
   Loader2,
   Heart,
   Tag,
+  Gift,
   CheckCircle2,
   XCircle,
   Truck,
@@ -23,7 +24,7 @@ import {
   ChevronRight,
   ExternalLink
 } from 'lucide-react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { logAuditEvent } from '../audit/AuditLogsView';
 
@@ -34,6 +35,41 @@ export const SelectedUserModal = ({ user, onClose, onUserUpdated }) => {
   const [noteText, setNoteText] = useState(user.adminNote || '');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteSavedSuccess, setNoteSavedSuccess] = useState(false);
+
+  // Referral State
+  const [referrals, setReferrals] = useState({ referredBy: null, referralsMade: [] });
+  const [loadingReferrals, setLoadingReferrals] = useState(true);
+
+  useEffect(() => {
+    async function fetchReferrals() {
+      if (!user.isFromFirestore || !user.id) {
+        setLoadingReferrals(false);
+        return;
+      }
+      try {
+        const referredByQuery = query(collection(db, 'referrals'), where('referredUserId', '==', user.id));
+        const madeQuery = query(collection(db, 'referrals'), where('referrerId', '==', user.id));
+
+        const [referredBySnap, madeSnap] = await Promise.all([
+          getDocs(referredByQuery),
+          getDocs(madeQuery)
+        ]);
+
+        let referredBy = null;
+        if (!referredBySnap.empty) {
+          referredBy = referredBySnap.docs[0].data();
+        }
+
+        const referralsMade = madeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setReferrals({ referredBy, referralsMade });
+      } catch (err) {
+        console.error('Error fetching referrals for user:', err);
+      } finally {
+        setLoadingReferrals(false);
+      }
+    }
+    fetchReferrals();
+  }, [user.id, user.isFromFirestore]);
 
   // Helper date formatter
   const formatDate = (val) => {
@@ -482,6 +518,82 @@ export const SelectedUserModal = ({ user, onClose, onUserUpdated }) => {
                     </button>
                   )}
                 </div>
+              </div>
+
+              {/* Referral Program Card */}
+              <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[11px] font-black text-amber-950 flex items-center gap-1.5 uppercase tracking-wider">
+                    <Gift className="w-3.5 h-3.5 text-amber-600" /> Referral Program
+                  </h4>
+                  {user.myReferralCode && (
+                    <span className="font-mono text-[10px] font-black bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-md border border-amber-300">
+                      Code: {user.myReferralCode}
+                    </span>
+                  )}
+                </div>
+
+                {loadingReferrals ? (
+                  <div className="flex justify-center p-3">
+                    <Loader2 className="w-4 h-4 text-amber-500 animate-spin" />
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {referrals.referredBy && (
+                      <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex justify-between items-center text-xs">
+                        <span className="font-bold text-slate-500">Referred By:</span>
+                        <div className="text-right">
+                          <span className="font-black text-amber-800">
+                            {referrals.referredBy.referrerName || referrals.referredBy.referrerCode || 'Registered User'}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-400 block">
+                            Code: {referrals.referredBy.referrerCode}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col justify-center items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Invites Sent</span>
+                        <span className="text-base font-black text-slate-800 font-mono">
+                          {referrals.referralsMade.length}
+                        </span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-amber-100 flex flex-col justify-center items-center">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Successful</span>
+                        <span className="text-base font-black text-emerald-600 font-mono">
+                          {referrals.referralsMade.filter(r => r.status === 'REWARDED').length}
+                        </span>
+                      </div>
+                    </div>
+
+                    {referrals.referralsMade.length > 0 && (
+                      <div className="bg-white rounded-xl border border-amber-100 p-2.5 text-xs">
+                        <p className="font-bold text-slate-400 uppercase text-[10px] mb-2 px-0.5">Invited Friends</p>
+                        <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                          {referrals.referralsMade.map((r, i) => (
+                            <div key={r.id || i} className="flex justify-between items-center bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100">
+                              <div className="truncate max-w-[140px]">
+                                <span className="font-bold text-slate-700 block truncate">{r.referredUserName || 'User'}</span>
+                                <span className="text-[10px] text-slate-400">{r.referredUserEmail || 'Customer'}</span>
+                              </div>
+                              <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                r.status === 'REWARDED' 
+                                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                                  : r.status === 'NOT_QUALIFIED'
+                                  ? 'bg-rose-100 text-rose-700 border border-rose-200'
+                                  : 'bg-amber-100 text-amber-700 border border-amber-200'
+                              }`}>
+                                {r.status || 'Registered'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
             </div>

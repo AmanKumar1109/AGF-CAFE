@@ -42,3 +42,36 @@ html, body {
   width: 100%;
   overflow-x: hidden;
 }
+
+/* Leaflet Map Full Size & Control Styling */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  font-family: inherit;
+  z-index: 1;
+}
+
+.leaflet-control-zoom {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-bottom: 1px solid #334155 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-radius: 16px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.leaflet-popup-tip {
+  background: #1e293b !important;
+}

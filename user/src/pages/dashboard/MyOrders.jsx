@@ -20,6 +20,7 @@ import { useAuth } from '../../context/useAuth';
 import { useCart } from '../../context/useCart';
 import { db } from '../../firebase';
 import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { sendOrderCancelledEmail } from '../../utils/emailTemplates';
 
 export const MyOrders = () => {
   const [activeTab, setActiveTab] = useState('all');
@@ -98,8 +99,13 @@ export const MyOrders = () => {
         updatedAt: new Date().toISOString()
       });
 
-      // Restore inventory if stock tracking is present
+      // Trigger Cancellation Email to Customer
       const order = orders.find(o => o.id === orderId);
+      if (order) {
+        sendOrderCancelledEmail({ ...order, status: 'Cancelled' }, finalReason).catch(console.warn);
+      }
+
+      // Restore inventory if stock tracking is present
       if (order && order.items && Array.isArray(order.items)) {
         for (const item of order.items) {
           if (item.id) {

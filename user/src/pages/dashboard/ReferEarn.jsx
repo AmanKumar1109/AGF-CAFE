@@ -39,10 +39,12 @@ export const ReferEarn = () => {
       console.warn("Referrals collection listener error:", err);
     });
 
-    // Listen to coupons
-    const qCoupons = query(collection(db, 'coupons'), where('userId', '==', currentUser.uid));
+    // Listen to user reward coupons
+    const qCoupons = collection(db, 'coupons');
     const unsubCoupons = onSnapshot(qCoupons, (snap) => {
-      const data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = snap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(c => c.userId === currentUser.uid || c.assignedUserId === currentUser.uid);
       setUserCoupons(data);
     }, (err) => {
       console.warn("Coupons collection listener error:", err);
@@ -226,7 +228,7 @@ export const ReferEarn = () => {
                 <div key={refItem.id} className="p-4 sm:p-5 flex items-center justify-between hover:bg-stone-50 transition-colors">
                   <div>
                     <p className="text-sm font-black text-stone-900 flex items-center gap-2">
-                      <span>{friendNames[refItem.referredUserId] || `Friend #${refItem.referredUserId?.substring(0, 4)}`}</span>
+                      <span>{refItem.referredUserName || friendNames[refItem.referredUserId] || (refItem.referredUserEmail ? refItem.referredUserEmail.split('@')[0] : `Friend #${refItem.referredUserId?.substring(0, 4)}`)}</span>
                       {refItem.status === 'REWARDED' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
                       {refItem.status === 'REGISTERED' && <Clock className="w-3.5 h-3.5 text-amber-600" />}
                     </p>
@@ -286,10 +288,16 @@ export const ReferEarn = () => {
                         )}
                       </div>
                       <p className={`text-sm font-black mt-1 ${isUsed ? 'text-stone-400' : 'text-amber-700'}`}>
-                        {coupon.discountType === 'flat' ? `₹${coupon.discountValue} OFF` : `${coupon.discountValue}% OFF`}
+                        {(coupon.discountType || coupon.type)?.toLowerCase() === 'flat'
+                          ? `₹${coupon.discountValue || coupon.discount || 50} OFF`
+                          : `${coupon.discountValue || coupon.discount || 10}% OFF`}
                       </p>
                       <p className="text-[10px] text-stone-500 mt-2 font-medium">
-                        Min. Order: ₹{coupon.minOrderValue || 199} &bull; Valid till: {coupon.validUntil ? new Date(coupon.validUntil).toLocaleDateString('en-IN') : '30 days'}
+                        Min. Order: ₹{coupon.minOrderValue || coupon.minOrder || 199} &bull; Valid till: {
+                          coupon.validUntil || coupon.expiryDate
+                            ? new Date(coupon.validUntil || coupon.expiryDate).toLocaleDateString('en-IN')
+                            : '30 days'
+                        }
                       </p>
                     </div>
                   </div>

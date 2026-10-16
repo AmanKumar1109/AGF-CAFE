@@ -7,10 +7,87 @@ import {
   signOut,
   updateProfile,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebase';
+import { sendWelcomeEmail } from '../utils/emailTemplates';
 
 const AuthContext = createContext(null);
+
+// Generate unique, readable customer referral code (e.g. AMAN582CAFE)
+const generateReferralCode = (name, uid) => {
+  const cleanName = (name || 'AGF').split(' ')[0].replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'AGF';
+  const randomDigits = Math.floor(100 + Math.random() * 900);
+  const uidSuffix = (uid || '').substring(0, 3).toUpperCase();
+  return `${cleanName.slice(0, 5)}${randomDigits}${uidSuffix}`;
+};
+
+// Process referral registration linking in Firestore
+const processReferralLink = async (newUserId, newUserName, newUserEmail, explicitCode = null) => {
+  try {
+    const code = (explicitCode || localStorage.getItem('pendingReferralCode') || '').trim().toUpperCase();
+    if (!code) return;
+
+    // Look for referrer by myReferralCode
+    const q = query(collection(db, 'users'), where('myReferralCode', '==', code));
+    const snap = await getDocs(q);
+
+    if (!snap.empty) {
+      const referrerDoc = snap.docs[0];
+      const referrerData = referrerDoc.data();
+      const referrerId = referrerDoc.id;
+
+      if (referrerId === newUserId) return; // Cannot refer self
+
+      const qExisting = query(
+        collection(db, 'referrals'),
+        where('referrerId', '==', referrerId),
+        where('referredUserId', '==', newUserId)
+      );
+      const snapExisting = await getDocs(qExisting);
+
+      if (snapExisting.empty) {
+        await addDoc(collection(db, 'referrals'), {
+          referrerId,
+          referrerName: referrerData.name || referrerData.fullName || 'Cafe Member',
+          referrerCode: code,
+          referredUserId: newUserId,
+          referredUserName: newUserName || 'Valued Friend',
+          referredUserEmail: newUserEmail || '',
+          status: 'REGISTERED',
+          orderId: null,
+          orderAmount: 0,
+          registeredAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+
+        const userDocRef = doc(db, 'users', newUserId);
+        await updateDoc(userDocRef, {
+          referredBy: referrerId,
+          referredByCode: code,
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('Error processing referral link:', err);
+  } finally {
+    try {
+      localStorage.removeItem('pendingReferralCode');
+    } catch {
+      // ignore
+    }
+  }
+};
 
 export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -20,6 +97,19 @@ export const AuthProvider = ({ children }) => {
   // Modals visibility
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+
+  // Capture URL referral param on mount (?ref=...)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const refParam = params.get('ref');
+      if (refParam) {
+        localStorage.setItem('pendingReferralCode', refParam.trim().toUpperCase());
+      }
+    } catch (e) {
+      console.warn('Could not read referral query parameter:', e);
+    }
+  }, []);
 
   // Load and subscribe to user state
   useEffect(() => {
@@ -33,6 +123,14 @@ export const AuthProvider = ({ children }) => {
 
           if (docSnap.exists()) {
             const data = docSnap.data();
+
+            // Migration: Generate referral code if missing for existing account
+            if (!data.myReferralCode) {
+              const myReferralCode = generateReferralCode(data.name || user.displayName, user.uid);
+              data.myReferralCode = myReferralCode;
+              await updateDoc(userDocRef, { myReferralCode });
+            }
+
             setUserProfile(data);
 
             // If phone or address is not set yet, prompt user to complete profile
@@ -40,7 +138,10 @@ export const AuthProvider = ({ children }) => {
               setIsProfileModalOpen(true);
             }
           } else {
-            // New user registered: create initial profile doc and prompt for details
+            // New user registered: generate unique referral code and link referrer
+            const pendingCode = localStorage.getItem('pendingReferralCode') || null;
+            const myReferralCode = generateReferralCode(user.displayName, user.uid);
+
             const initialData = {
               uid: user.uid,
               name: user.displayName || '',
@@ -51,12 +152,25 @@ export const AuthProvider = ({ children }) => {
               city: '',
               pincode: '',
               landmark: '',
+              myReferralCode,
+              referredByCode: pendingCode,
+              usedCoupons: [],
               createdAt: serverTimestamp(),
             };
 
             await setDoc(userDocRef, initialData);
             setUserProfile(initialData);
             setIsProfileModalOpen(true);
+
+            // Link referral in background
+            if (pendingCode) {
+              await processReferralLink(user.uid, user.displayName, user.email, pendingCode);
+            }
+
+            // Send Welcome Email
+            if (user.email) {
+              sendWelcomeEmail(user.email, user.displayName).catch(console.warn);
+            }
           }
         } catch (error) {
           console.error('Error fetching user profile from Firestore:', error);
@@ -76,10 +190,17 @@ export const AuthProvider = ({ children }) => {
     return signInWithEmailAndPassword(auth, email, password);
   };
 
-  // Email & Password Signup
-  const signupWithEmail = async (email, password, displayName) => {
+  // Email & Password Signup (supports optional referral code)
+  const signupWithEmail = async (email, password, displayName, referralCode = null) => {
+    if (referralCode) {
+      try {
+        localStorage.setItem('pendingReferralCode', referralCode.trim().toUpperCase());
+      } catch {
+        // ignore
+      }
+    }
     const res = await createUserWithEmailAndPassword(auth, email, password);
-    if (displayName) {
+    if (displayName && res.user) {
       await updateProfile(res.user, { displayName });
     }
     return res;
@@ -137,6 +258,13 @@ export const AuthProvider = ({ children }) => {
     if (!currentUser) return null;
     const currentAddresses = Array.isArray(userProfile?.addresses) ? userProfile.addresses : [];
     const addressId = 'addr_' + Date.now();
+    const parsedLat = newAddress.lat !== null && newAddress.lat !== undefined && !isNaN(parseFloat(newAddress.lat))
+      ? parseFloat(newAddress.lat)
+      : null;
+    const parsedLng = newAddress.lng !== null && newAddress.lng !== undefined && !isNaN(parseFloat(newAddress.lng))
+      ? parseFloat(newAddress.lng)
+      : null;
+
     const formattedAddress = {
       id: addressId,
       name: newAddress.name || userProfile?.name || currentUser?.displayName || '',
@@ -148,6 +276,9 @@ export const AuthProvider = ({ children }) => {
       state: newAddress.state || 'Jharkhand',
       pincode: newAddress.pincode || '832101',
       type: newAddress.type || 'Home',
+      lat: parsedLat,
+      lng: parsedLng,
+      deliveryInstructions: newAddress.deliveryInstructions || '',
       createdAt: new Date().toISOString(),
     };
 
@@ -161,6 +292,8 @@ export const AuthProvider = ({ children }) => {
       pincode: formattedAddress.pincode,
       landmark: formattedAddress.locality,
       phone: formattedAddress.phone || userProfile?.phone || '',
+      lat: parsedLat,
+      lng: parsedLng,
       updatedAt: serverTimestamp(),
     };
 
@@ -184,9 +317,24 @@ export const AuthProvider = ({ children }) => {
   const updateAddress = async (addressId, updatedData) => {
     if (!currentUser) return;
     const currentAddresses = Array.isArray(userProfile?.addresses) ? userProfile.addresses : [];
-    const updatedAddresses = currentAddresses.map((addr) =>
-      addr.id === addressId ? { ...addr, ...updatedData, updatedAt: new Date().toISOString() } : addr
-    );
+    const updatedAddresses = currentAddresses.map((addr) => {
+      if (addr.id === addressId) {
+        const parsedLat = updatedData.lat !== undefined
+          ? (updatedData.lat !== null && !isNaN(parseFloat(updatedData.lat)) ? parseFloat(updatedData.lat) : null)
+          : addr.lat;
+        const parsedLng = updatedData.lng !== undefined
+          ? (updatedData.lng !== null && !isNaN(parseFloat(updatedData.lng)) ? parseFloat(updatedData.lng) : null)
+          : addr.lng;
+        return {
+          ...addr,
+          ...updatedData,
+          lat: parsedLat,
+          lng: parsedLng,
+          updatedAt: new Date().toISOString()
+        };
+      }
+      return addr;
+    });
 
     const updates = {
       addresses: updatedAddresses,
@@ -198,6 +346,8 @@ export const AuthProvider = ({ children }) => {
       if (updatedData.city) updates.city = updatedData.city;
       if (updatedData.pincode) updates.pincode = updatedData.pincode;
       if (updatedData.phone) updates.phone = updatedData.phone;
+      if (updatedData.lat !== undefined) updates.lat = updatedData.lat ? parseFloat(updatedData.lat) : null;
+      if (updatedData.lng !== undefined) updates.lng = updatedData.lng ? parseFloat(updatedData.lng) : null;
     }
 
     const userDocRef = doc(db, 'users', currentUser.uid);

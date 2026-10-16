@@ -11,6 +11,7 @@ import {
   MapPin,
   ChevronDown,
   LayoutDashboard,
+  Gift,
 } from 'lucide-react';
 import { useCart } from '../../context/useCart';
 import { useAuth } from '../../context/useAuth';
@@ -292,6 +293,21 @@ export const Navbar = () => {
                       >
                         <MapPin className="w-4 h-4 text-amber-500" />
                         <span>Saved Addresses</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setIsUserMenuOpen(false);
+                          navigate('/dashboard/refer-earn');
+                        }}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-xs font-semibold rounded-xl transition cursor-pointer text-left ${
+                          isLightNavbar
+                            ? 'text-stone-700 hover:text-stone-900 hover:bg-stone-100'
+                            : 'text-stone-200 hover:text-white hover:bg-stone-800/80'
+                        }`}
+                      >
+                        <Gift className="w-4 h-4 text-amber-500" />
+                        <span>Refer & Earn</span>
                       </button>
                     </div>
 

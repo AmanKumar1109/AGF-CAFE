@@ -1,117 +1,135 @@
 import React from 'react';
 import {
-  MoreHorizontal,
-  Headphones,
-  Watch,
-  Smartphone,
-  Gamepad2,
-  DollarSign,
+  UtensilsCrossed,
+  Coffee,
+  Pizza,
+  Sandwich,
   Star,
+  ArrowUpRight,
+  Sparkles
 } from 'lucide-react';
 
-export const BestSellingProducts = ({ products }) => {
-  const getProductIcon = (type) => {
-    switch (type) {
-      case 'headphones':
-        return <Headphones className="w-4 h-4 text-slate-700" />;
-      case 'watch':
-        return <Watch className="w-4 h-4 text-slate-700" />;
-      case 'phone':
-        return <Smartphone className="w-4 h-4 text-slate-700" />;
-      case 'gamepad':
-        return <Gamepad2 className="w-4 h-4 text-slate-700" />;
-      default:
-        return <Headphones className="w-4 h-4 text-slate-700" />;
+export const BestSellingProducts = ({ products = [], onNavigateTab }) => {
+  const getDishIcon = (category = '') => {
+    const c = category.toLowerCase();
+    if (c.includes('coffee') || c.includes('tea') || c.includes('beverage') || c.includes('drink')) {
+      return '☕';
     }
+    if (c.includes('pizza')) {
+      return '🍕';
+    }
+    if (c.includes('burger')) {
+      return '🍔';
+    }
+    if (c.includes('sandwich')) {
+      return '🥪';
+    }
+    if (c.includes('dessert') || c.includes('cake') || c.includes('sweet')) {
+      return '🍰';
+    }
+    if (c.includes('pasta') || c.includes('noodle')) {
+      return '🍝';
+    }
+    return '🍽️';
   };
 
   return (
-    <div className="gsap-card bg-white rounded-2xl border border-slate-100 p-6 shadow-[0_2px_10px_rgba(0,0,0,0.015)] hover:shadow-[0_8px_20px_rgba(0,0,0,0.035)] transition-all duration-200">
+    <div className="gsap-card bg-white rounded-3xl border border-slate-200/80 p-6 shadow-xs hover:shadow-md transition-all duration-200 space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-slate-900 tracking-tight">
-          Best Selling Products
-        </h3>
-        <button className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-50 transition cursor-pointer">
-          <MoreHorizontal className="w-4 h-4" />
-        </button>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+            <UtensilsCrossed className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-base font-black text-slate-900 tracking-tight font-serif">
+              Best Selling Cafe Dishes & Beverages
+            </h3>
+            <p className="text-xs text-slate-400 font-medium">Aggregated popularity from customer orders</p>
+          </div>
+        </div>
+
+        {onNavigateTab && (
+          <button
+            onClick={() => onNavigateTab('products')}
+            className="text-xs font-bold text-amber-600 hover:text-amber-700 flex items-center gap-1 cursor-pointer"
+          >
+            Manage Menu <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
 
-      {/* Table */}
+      {/* Dishes Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-xs">
           <thead>
-            <tr className="text-[11px] font-semibold text-slate-400 border-b border-slate-100 uppercase tracking-wider">
-              <th className="pb-3 font-semibold pl-1">ID</th>
-              <th className="pb-3 font-semibold">NAME</th>
-              <th className="pb-3 font-semibold text-center sm:text-left">SOLD</th>
-              <th className="pb-3 font-semibold">REVENUE</th>
-              <th className="pb-3 font-semibold text-right pr-2">RATING</th>
+            <tr className="text-[11px] font-bold text-slate-400 border-b border-slate-100 uppercase tracking-wider">
+              <th className="pb-3 pl-2">Dish</th>
+              <th className="pb-3">Category</th>
+              <th className="pb-3 text-center">Units Sold</th>
+              <th className="pb-3 text-right">Revenue (₹)</th>
+              <th className="pb-3 text-right pr-2">Rating</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-50">
-            {products.map((product, idx) => (
-              <tr
-                key={idx}
-                className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-              >
-                {/* ID */}
-                <td className="py-3.5 pl-1 font-medium text-slate-400 text-[11.5px]">
-                  {product.id}
-                </td>
-
-                {/* Name & Product Icon */}
-                <td className="py-3.5 pr-2">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-slate-100 border border-slate-200/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                      {getProductIcon(product.type)}
-                    </div>
-                    <span className="font-semibold text-slate-800 tracking-tight truncate max-w-[170px] sm:max-w-[210px]">
-                      {product.name}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Sold Count */}
-                <td className="py-3.5 font-medium text-slate-500 whitespace-nowrap">
-                  {product.sold}
-                </td>
-
-                {/* Revenue with Dollar Sign Icon */}
-                <td className="py-3.5 whitespace-nowrap">
-                  <div className="flex items-center gap-1.5 font-semibold">
-                    <span
-                      className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-                        product.revenueStatus === 'up'
-                          ? 'text-emerald-500'
-                          : 'text-rose-400'
-                      }`}
-                    >
-                      $
-                    </span>
-                    <span
-                      className={
-                        product.revenueStatus === 'up'
-                          ? 'text-emerald-600'
-                          : 'text-rose-500'
-                      }
-                    >
-                      {product.revenue}
-                    </span>
-                  </div>
-                </td>
-
-                {/* Rating with Star */}
-                <td className="py-3.5 text-right pr-2 whitespace-nowrap">
-                  <div className="inline-flex items-center gap-1 font-semibold text-slate-700">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span className="text-[11.5px] text-slate-500">
-                      ({product.rating})
-                    </span>
-                  </div>
+          <tbody className="divide-y divide-slate-100 text-slate-700">
+            {products.length === 0 ? (
+              <tr>
+                <td colSpan="5" className="py-8 text-center text-slate-400 font-medium">
+                  No orders recorded yet. As orders arrive, best selling cafe items will appear here!
                 </td>
               </tr>
-            ))}
+            ) : (
+              products.map((item, idx) => (
+                <tr
+                  key={item.id || idx}
+                  className="hover:bg-amber-50/30 transition-colors group"
+                >
+                  {/* Dish Name & Food Icon */}
+                  <td className="py-3.5 pl-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 text-base flex items-center justify-center shrink-0 border border-amber-200/60 shadow-2xs">
+                        {getDishIcon(item.category || item.name)}
+                      </div>
+                      <div>
+                        <p className="font-extrabold text-slate-900 group-hover:text-amber-700 transition-colors">
+                          {item.name}
+                        </p>
+                        <p className="text-[11px] text-slate-400 font-medium">
+                          ₹{item.price ? Number(item.price).toFixed(2) : '150.00'} each
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Category Pill */}
+                  <td className="py-3.5">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
+                      {item.category || 'Specialty'}
+                    </span>
+                  </td>
+
+                  {/* Sold Count */}
+                  <td className="py-3.5 text-center font-bold text-slate-800">
+                    <span className="px-2 py-0.5 bg-amber-500/10 text-amber-800 rounded-lg font-black text-xs">
+                      {item.unitsSold || 0} sold
+                    </span>
+                  </td>
+
+                  {/* Revenue in Rupees */}
+                  <td className="py-3.5 text-right font-black text-slate-900 text-sm font-serif">
+                    ₹{Number(item.revenue || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </td>
+
+                  {/* Rating */}
+                  <td className="py-3.5 text-right pr-2">
+                    <div className="inline-flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200/70 text-amber-700 font-black text-xs">
+                      <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                      <span>{item.rating ? Number(item.rating).toFixed(1) : '4.9'}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

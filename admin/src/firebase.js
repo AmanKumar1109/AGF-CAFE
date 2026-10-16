@@ -2,8 +2,10 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
-const firebaseConfig = {
+// Initialize Firebase
+import { getAuth } from "firebase/auth";
+
+export const firebaseConfig = {
   apiKey: "AIzaSyD5op5lZ48qOWrt1xaUieVBhbhXnWHgx7k",
   authDomain: "theagfcafe.firebaseapp.com",
   projectId: "theagfcafe",
@@ -13,7 +15,7 @@ const firebaseConfig = {
   measurementId: "G-0W6XMV9CCD"
 };
 
-// Initialize Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 export default app;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { 
   ShoppingBag, 
   History, 
@@ -6,11 +6,14 @@ import {
   Sparkles, 
   Clock, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Radio
 } from 'lucide-react';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
 import { CurrentOrdersView } from './CurrentOrdersView';
 import { OrderHistoryView } from './OrderHistoryView';
+
+const FleetRadarView = lazy(() => import('../fleet/FleetRadarView'));
 
 export const OrdersManager = () => {
   const [activeTab, setActiveTab] = useState('live');
@@ -57,7 +60,7 @@ export const OrdersManager = () => {
       </div>
 
       {/* Main Tab Switcher */}
-      <div className="flex gap-2 border-b border-slate-200 pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
         <button
           onClick={() => setActiveTab('live')}
           className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2.5 cursor-pointer ${
@@ -76,6 +79,21 @@ export const OrdersManager = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('map')}
+          className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2.5 cursor-pointer ${
+            activeTab === 'map'
+              ? 'bg-amber-500 text-stone-950 shadow-md shadow-amber-500/20'
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          <Radio className="w-4 h-4 stroke-[2.5] animate-pulse text-amber-500" />
+          <span>Live Delivery Map & Radar</span>
+          <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
+            5 KM
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('history')}
           className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-2.5 cursor-pointer ${
             activeTab === 'history'
@@ -91,6 +109,10 @@ export const OrdersManager = () => {
       {/* Tab Views */}
       {activeTab === 'live' ? (
         <CurrentOrdersView />
+      ) : activeTab === 'map' ? (
+        <Suspense fallback={<div className="p-12 text-center text-slate-500 font-bold">Loading Live Fleet Radar...</div>}>
+          <FleetRadarView />
+        </Suspense>
       ) : (
         <OrderHistoryView />
       )}

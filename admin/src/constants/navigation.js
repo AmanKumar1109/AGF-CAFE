@@ -1,62 +1,92 @@
-export const MAIN_NAV_ITEMS = [
+export const NAV_CATEGORIES = [
   {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: 'LayoutDashboard',
-    path: '/',
-    active: true,
+    id: 'operations',
+    label: 'Operations',
+    items: [
+      {
+        id: 'dashboard',
+        label: 'Dashboard',
+        icon: 'LayoutDashboard',
+        path: '/',
+      },
+      {
+        id: 'orders',
+        label: 'Orders',
+        icon: 'ClipboardList',
+        path: '/orders',
+      },
+      {
+        id: 'fleet-radar',
+        label: 'Live Fleet Radar & Map',
+        icon: 'Radio',
+        path: '/fleet-radar',
+      },
+      {
+        id: 'products',
+        label: 'Menu & Dishes',
+        icon: 'Package',
+        path: '/products',
+      },
+      {
+        id: 'staff',
+        label: 'Delivery Personnel',
+        icon: 'Bike',
+        path: '/staff',
+      },
+    ],
   },
   {
-    id: 'orders',
-    label: 'Orders',
-    icon: 'ClipboardList',
-    path: '/orders',
-    badge: '46',
-    badgeColor: 'emerald',
-  },
-  {
-    id: 'products',
-    label: 'Products',
-    icon: 'Package',
-    path: '/products',
-  },
-  {
-    id: 'coupons',
-    label: 'Coupons & Offers',
-    icon: 'Ticket',
-    path: '/coupons',
+    id: 'growth',
+    label: 'Growth & Offers',
+    items: [
+      {
+        id: 'coupons',
+        label: 'Coupons & Offers',
+        icon: 'Ticket',
+        path: '/coupons',
+      },
+      {
+        id: 'referrals',
+        label: 'Referral Program',
+        icon: 'Gift',
+        path: '/referrals',
+      },
+    ],
   },
   {
     id: 'customers',
-    label: 'Customers',
-    icon: 'Users',
-    path: '/customers',
-  },
-  {
-    id: 'reviews',
-    label: 'Reviews',
-    icon: 'Star',
-    path: '/reviews',
-  },
-  {
-    id: 'complaints',
-    label: 'Complaints',
-    icon: 'MessageSquareWarning',
-    path: '/complaints',
-  },
-  {
-    id: 'audit-logs',
-    label: 'Audit Logs',
-    icon: 'ClipboardList',
-    path: '/audit-logs',
-  },
-  {
-    id: 'online-store',
-    label: 'Online Store',
-    icon: 'Store',
-    path: '/store',
+    label: 'Customers & CRM',
+    items: [
+      {
+        id: 'customers',
+        label: 'Customers',
+        icon: 'Users',
+        path: '/customers',
+      },
+      {
+        id: 'reviews',
+        label: 'Reviews',
+        icon: 'Star',
+        path: '/reviews',
+      },
+      {
+        id: 'complaints',
+        label: 'Complaints',
+        icon: 'MessageSquareWarning',
+        path: '/complaints',
+      },
+      {
+        id: 'notifications',
+        label: 'Email Notifications',
+        icon: 'Mail',
+        path: '/notifications',
+      },
+    ],
   },
 ];
+
+// Flat export of all main navigation items for compatibility
+export const MAIN_NAV_ITEMS = NAV_CATEGORIES.flatMap((cat) => cat.items);
 
 export const CONTENT_NAV_ITEMS = [
   {
@@ -114,10 +144,15 @@ export const SECONDARY_NAV_ITEMS = [];
 
 export const BOTTOM_NAV_ITEMS = [
   {
+    id: 'audit-logs',
+    label: 'Audit Logs',
+    icon: 'ShieldCheck',
+    path: '/audit-logs',
+  },
+  {
     id: 'settings',
     label: 'Settings',
     icon: 'Settings',
     path: '/settings',
   },
 ];
-

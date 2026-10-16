@@ -4,10 +4,138 @@ import {
   collection, 
   onSnapshot, 
   doc, 
+  getDoc,
+  getDocs,
+  query,
+  where,
+  addDoc,
   updateDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  increment 
 } from 'firebase/firestore';
 import { logAuditEvent } from '../components/audit/AuditLogsView';
+import { sendOrderStatusEmail } from '../utils/emailTemplates';
+
+// Helper to qualify referral reward automatically upon order delivery
+const qualifyReferralForDeliveredOrder = async (order) => {
+  if (!order) return;
+  const customerId = order.userId || order.customerId;
+  if (!customerId) return;
+
+  try {
+    // 1. Check if this customer has a pending referral
+    const refQuery = query(
+      collection(db, 'referrals'),
+      where('referredUserId', '==', customerId),
+      where('status', '==', 'REGISTERED')
+    );
+    const refSnap = await getDocs(refQuery);
+    if (refSnap.empty) return;
+
+    // 2. Fetch campaign settings
+    const settingsRef = doc(db, 'settings', 'referrals');
+    const settingsSnap = await getDoc(settingsRef);
+    const campaignConfig = settingsSnap.exists() ? settingsSnap.data() : {};
+
+    const isCampaignActive = campaignConfig.referralCampaignActive !== false;
+    if (!isCampaignActive) return;
+
+    const minOrderVal = Number(campaignConfig.referralMinOrderValue ?? 199);
+    const referrerReward = Number(campaignConfig.referrerRewardAmount ?? 50);
+    const referredReward = Number(campaignConfig.referredUserRewardAmount ?? 50);
+    const couponMinOrder = Number(campaignConfig.referralCouponMinOrderValue ?? 199);
+    const validityDays = Number(campaignConfig.referralCouponValidityDays ?? 30);
+
+    const orderTotal = Number(order.totalAmount || order.grandTotal || 0);
+
+    // If order total does not meet the threshold, keep pending for future qualifying order
+    if (orderTotal < minOrderVal) {
+      console.log(`Referral order amount ₹${orderTotal} is below threshold ₹${minOrderVal}`);
+      return;
+    }
+
+    // Process each matching pending referral
+    for (const refDoc of refSnap.docs) {
+      const referralData = refDoc.data();
+      const expiryDate = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000).toISOString();
+
+      // Create Referrer coupon (Flat ₹X OFF)
+      const referrerCouponCode = `REF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      await addDoc(collection(db, 'coupons'), {
+        code: referrerCouponCode,
+        title: `₹${referrerReward} Referral Reward`,
+        description: `Earned by referring ${referralData.referredUserName || 'a friend'} to AGF Cafe`,
+        discountType: 'flat',
+        type: 'FLAT',
+        discountValue: referrerReward,
+        discount: referrerReward,
+        minOrderValue: couponMinOrder,
+        minOrder: couponMinOrder,
+        maxDiscount: referrerReward,
+        validUntil: expiryDate,
+        expiryDate: expiryDate,
+        isActive: true,
+        usageCount: 0,
+        usageLimit: 1,
+        userId: referralData.referrerId,
+        assignedUserId: referralData.referrerId,
+        isGlobal: false,
+        isReferralCoupon: true,
+        createdAt: serverTimestamp(),
+      });
+
+      // Create Referred Friend coupon (Flat ₹X Welcome OFF)
+      const referredCouponCode = `WELCOME-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      await addDoc(collection(db, 'coupons'), {
+        code: referredCouponCode,
+        title: `₹${referredReward} Welcome Reward`,
+        description: `Welcome bonus for completing your first order at AGF Cafe`,
+        discountType: 'flat',
+        type: 'FLAT',
+        discountValue: referredReward,
+        discount: referredReward,
+        minOrderValue: couponMinOrder,
+        minOrder: couponMinOrder,
+        maxDiscount: referredReward,
+        validUntil: expiryDate,
+        expiryDate: expiryDate,
+        isActive: true,
+        usageCount: 0,
+        usageLimit: 1,
+        userId: referralData.referredUserId,
+        assignedUserId: referralData.referredUserId,
+        isGlobal: false,
+        isReferralCoupon: true,
+        createdAt: serverTimestamp(),
+      });
+
+      // Update referral doc to REWARDED
+      await updateDoc(doc(db, 'referrals', refDoc.id), {
+        status: 'REWARDED',
+        orderId: order.id,
+        orderAmount: orderTotal,
+        orderQualifiedAt: serverTimestamp(),
+        rewardedAt: serverTimestamp(),
+        referrerCouponCode,
+        referredCouponCode,
+        referrerReward,
+        referredReward,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Record Audit Log
+      await logAuditEvent({
+        action: 'REFERRAL_REWARDED',
+        details: `Auto-qualified referral #${refDoc.id.slice(0, 8)} on delivered Order #${order.id.slice(0, 8)} (₹${orderTotal}). Issued coupons: ${referrerCouponCode} to Referrer & ${referredCouponCode} to Friend`,
+        category: 'Referrals',
+        severity: 'success',
+        actor: 'System / Delivery Automation',
+      });
+    }
+  } catch (err) {
+    console.error("Error qualifying referral for order delivery:", err);
+  }
+};
 
 export const AdminOrdersContext = createContext();
 
@@ -120,6 +248,47 @@ export const AdminOrdersProvider = ({ children }) => {
         actor: 'Admin',
       });
 
+      // If marked as Delivered, qualify referral program rewards and update delivery staff metrics
+      if (newStatus.toLowerCase() === 'delivered') {
+        const orderObj = orders.find(o => o.id === orderId);
+        if (orderObj) {
+          qualifyReferralForDeliveredOrder(orderObj);
+          if (orderObj.assignedPartnerId) {
+            updateDoc(doc(db, 'staff', orderObj.assignedPartnerId), {
+              totalDeliveries: increment(1),
+              status: 'Available',
+              updatedAt: serverTimestamp(),
+            }).catch(console.warn);
+          }
+        } else {
+          getDoc(orderRef).then(snap => {
+            if (snap.exists()) {
+              const data = { id: snap.id, ...snap.data() };
+              qualifyReferralForDeliveredOrder(data);
+              if (data.assignedPartnerId) {
+                updateDoc(doc(db, 'staff', data.assignedPartnerId), {
+                  totalDeliveries: increment(1),
+                  status: 'Available',
+                  updatedAt: serverTimestamp(),
+                }).catch(console.warn);
+              }
+            }
+          }).catch(console.error);
+        }
+      }
+
+      // Send Order Status Email Notification (Preparing, Out for Delivery, Delivered)
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (targetOrder) {
+        sendOrderStatusEmail({ ...targetOrder, status: newStatus }, newStatus).catch(console.error);
+      } else {
+        getDoc(orderRef).then(snap => {
+          if (snap.exists()) {
+            sendOrderStatusEmail({ id: snap.id, ...snap.data(), status: newStatus }, newStatus);
+          }
+        }).catch(console.error);
+      }
+
       return true;
     } catch (err) {
       console.error("Error updating order status:", err);
@@ -148,6 +317,18 @@ export const AdminOrdersProvider = ({ children }) => {
         actor: 'Admin',
       });
 
+      // Send Order Cancelled Email Notification
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (targetOrder) {
+        sendOrderStatusEmail({ ...targetOrder, status: 'Cancelled' }, 'Cancelled', reason).catch(console.error);
+      } else {
+        getDoc(orderRef).then(snap => {
+          if (snap.exists()) {
+            sendOrderStatusEmail({ id: snap.id, ...snap.data(), status: 'Cancelled' }, 'Cancelled', reason);
+          }
+        }).catch(console.error);
+      }
+
       return true;
     } catch (err) {
       console.error("Error cancelling order:", err);
@@ -156,16 +337,38 @@ export const AdminOrdersProvider = ({ children }) => {
     }
   };
 
-  // Assign delivery partner
   const assignDeliveryPartner = async (orderId, partnerData) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
-      await updateDoc(orderRef, {
+      const updatePayload = {
         assignedPartnerName: partnerData.name,
         assignedPartnerPhone: partnerData.phone,
         status: 'Out for Delivery',
+        outForDeliveryAt: new Date().toISOString(),
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (partnerData.id) {
+        updatePayload.assignedPartnerId = partnerData.id;
+      }
+      if (partnerData.vehicle) {
+        updatePayload.assignedPartnerVehicle = partnerData.vehicle;
+      }
+      await updateDoc(orderRef, updatePayload);
+
+      // If staff partner ID is provided, set status to On Duty and increment active orders
+      if (partnerData.id) {
+        try {
+          const staffRef = doc(db, 'staff', partnerData.id);
+          await updateDoc(staffRef, {
+            status: 'On Duty',
+            activeOrders: increment(1),
+            updatedAt: serverTimestamp(),
+          });
+        } catch (sErr) {
+          console.warn("Could not update staff document on assign:", sErr);
+        }
+      }
+
       showToast(`Assigned ${partnerData.name} & marked Out for Delivery!`);
 
       // Record Audit Log
@@ -176,6 +379,23 @@ export const AdminOrdersProvider = ({ children }) => {
         severity: 'success',
         actor: 'Admin',
       });
+
+      // Send Out for Delivery Email Notification
+      const targetOrder = orders.find(o => o.id === orderId);
+      if (targetOrder) {
+        sendOrderStatusEmail({ 
+          ...targetOrder, 
+          status: 'Out for Delivery', 
+          assignedPartnerName: partnerData.name, 
+          assignedPartnerPhone: partnerData.phone 
+        }, 'Out for Delivery').catch(console.error);
+      } else {
+        getDoc(orderRef).then(snap => {
+          if (snap.exists()) {
+            sendOrderStatusEmail({ id: snap.id, ...snap.data(), status: 'Out for Delivery' }, 'Out for Delivery');
+          }
+        }).catch(console.error);
+      }
 
       return true;
     } catch (err) {

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Mail, Lock, User, AlertCircle, ArrowRight, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Mail, Lock, User, AlertCircle, ArrowRight, Sparkles, Gift } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 
 export const AuthModal = () => {
@@ -10,9 +10,24 @@ export const AuthModal = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    referralCode: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Pre-fill referral code if stored from ?ref= parameter
+  useEffect(() => {
+    if (isAuthModalOpen) {
+      try {
+        const storedRef = localStorage.getItem('pendingReferralCode') || '';
+        if (storedRef) {
+          setFormData((prev) => ({ ...prev, referralCode: storedRef }));
+        }
+      } catch (e) {
+        console.warn('Could not read pending referral code:', e);
+      }
+    }
+  }, [isAuthModalOpen]);
 
   if (!isAuthModalOpen) return null;
 
@@ -38,7 +53,12 @@ export const AuthModal = () => {
     try {
       setLoading(true);
       if (isSignUp) {
-        await signupWithEmail(formData.email.trim(), formData.password, formData.name.trim());
+        await signupWithEmail(
+          formData.email.trim(),
+          formData.password,
+          formData.name.trim(),
+          formData.referralCode
+        );
       } else {
         await loginWithEmail(formData.email.trim(), formData.password);
       }
@@ -202,22 +222,48 @@ export const AuthModal = () => {
           </div>
 
           {isSignUp && (
-            <div>
-              <label className="block text-xs font-medium text-stone-300 mb-1">
-                Confirm Password
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-3 w-4 h-4 text-stone-500" />
-                <input
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  placeholder="••••••••"
-                  className="w-full bg-stone-950 border border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-amber-500 transition"
-                />
+            <>
+              <div>
+                <label className="block text-xs font-medium text-stone-300 mb-1">
+                  Confirm Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-3 w-4 h-4 text-stone-500" />
+                  <input
+                    type="password"
+                    required
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    placeholder="••••••••"
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-xs text-stone-200 placeholder:text-stone-600 focus:outline-none focus:border-amber-500 transition"
+                  />
+                </div>
               </div>
-            </div>
+
+              <div>
+                <label className="block text-xs font-medium text-stone-300 mb-1">
+                  Referral / Invite Code <span className="text-stone-500 font-normal">(Optional)</span>
+                </label>
+                <div className="relative">
+                  <Gift className="absolute left-3.5 top-3 w-4 h-4 text-amber-500/70" />
+                  <input
+                    type="text"
+                    value={formData.referralCode}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        referralCode: e.target.value.toUpperCase().replace(/\s/g, ''),
+                      })
+                    }
+                    placeholder="e.g. AMAN582CAFE"
+                    className="w-full bg-stone-950 border border-stone-800 rounded-xl py-2.5 pl-10 pr-4 text-xs font-mono font-bold text-amber-400 placeholder:text-stone-600 focus:outline-none focus:border-amber-500 uppercase transition"
+                  />
+                </div>
+                <p className="text-[10px] text-stone-500 mt-1">
+                  Both you and your friend unlock a ₹50 discount voucher!
+                </p>
+              </div>
+            </>
           )}
 
           <button
