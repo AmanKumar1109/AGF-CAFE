@@ -31,10 +31,10 @@ export const Wishlist = () => {
   return (
     <div ref={containerRef} className="pb-24 lg:pb-8 space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight font-serif">
+        <h1 className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight font-serif">
           My Wishlist
         </h1>
-        <p className="text-stone-400 font-medium text-xs sm:text-sm mt-1">
+        <p className="text-stone-500 font-medium text-xs sm:text-sm mt-1">
           Your favorite cafe dishes, coffee brews, and desserts ready to order
         </p>
       </div>
@@ -50,10 +50,10 @@ export const Wishlist = () => {
             return (
               <div 
                 key={dish.id} 
-                className="dish-card bg-stone-900/70 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl hover:border-amber-500/40 transition-all duration-300 flex flex-col justify-between p-3.5 sm:p-5 group"
+                className="dish-card bg-white border border-stone-200 rounded-3xl overflow-hidden shadow-sm hover:shadow hover:border-stone-300 transition-all duration-200 flex flex-col justify-between p-3.5 sm:p-5 group"
               >
                 <div>
-                  <div className="relative h-36 sm:h-44 bg-stone-800 rounded-2xl overflow-hidden mb-3.5">
+                  <div className="relative h-36 sm:h-44 bg-stone-100 rounded-2xl overflow-hidden mb-3.5">
                     <img 
                       src={dishImage} 
                       alt={dish.name} 
@@ -61,28 +61,28 @@ export const Wishlist = () => {
                     />
                     <button 
                       onClick={() => toggleWishlist(dish)}
-                      className="absolute top-2.5 right-2.5 w-8 h-8 sm:w-9 sm:h-9 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-pink-400 hover:scale-110 active:scale-95 transition-all shadow-md cursor-pointer border border-white/10"
+                      className="absolute top-2.5 right-2.5 w-8 h-8 sm:w-9 sm:h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-pink-600 hover:scale-110 active:scale-95 transition-all shadow-sm cursor-pointer border border-stone-200"
                       title="Remove from Wishlist"
                     >
-                      <Heart className="w-4 h-4 fill-pink-500 stroke-pink-400" />
+                      <Heart className="w-4 h-4 fill-pink-500 stroke-pink-600" />
                     </button>
                     {dish.originalPrice > dish.price && (
-                      <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 text-[10px] font-black rounded-full shadow-md">
+                      <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 bg-amber-400 text-stone-950 text-[10px] font-black rounded-full shadow-sm">
                         {Math.round(((dish.originalPrice - dish.price) / dish.originalPrice) * 100)}% OFF
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <h3 className="font-black text-white text-xs sm:text-base mb-1 line-clamp-1">
+                    <h3 className="font-black text-stone-900 text-xs sm:text-base mb-1 line-clamp-1">
                       {dish.name}
                     </h3>
                     <div className="flex items-baseline gap-1.5 mb-3.5">
-                      <span className="text-base sm:text-xl font-black text-amber-400 font-mono">
+                      <span className="text-base sm:text-xl font-black text-stone-900 font-mono">
                         ₹{dish.price}
                       </span>
                       {dish.originalPrice > dish.price && (
-                        <span className="text-[10px] sm:text-xs font-bold text-stone-500 line-through">
+                        <span className="text-[10px] sm:text-xs font-bold text-stone-400 line-through">
                           ₹{dish.originalPrice}
                         </span>
                       )}
@@ -93,7 +93,7 @@ export const Wishlist = () => {
                 <div>
                   {quantityInCart > 0 ? (
                     <div className="flex items-center gap-2">
-                      <div className="flex-1 flex items-center justify-between bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 p-1 sm:p-1.5 rounded-2xl shadow-md shadow-amber-500/20">
+                      <div className="flex-1 flex items-center justify-between bg-amber-400 text-stone-950 p-1 sm:p-1.5 rounded-2xl shadow-sm">
                         <button
                           onClick={() => updateQuantity(dish.id, quantityInCart - 1)}
                           className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-black/10 hover:bg-black/20 text-stone-950 flex items-center justify-center font-black transition-colors cursor-pointer"
@@ -110,16 +110,16 @@ export const Wishlist = () => {
                       </div>
                       <button 
                         onClick={() => setIsCartOpen(true)}
-                        className="w-9 h-9 sm:w-11 sm:h-11 bg-stone-800 text-white flex items-center justify-center rounded-2xl shadow-md cursor-pointer hover:bg-stone-700 transition-all border border-white/5"
+                        className="w-9 h-9 sm:w-11 sm:h-11 bg-stone-100 text-stone-800 flex items-center justify-center rounded-2xl shadow-sm cursor-pointer hover:bg-stone-200 transition-all border border-stone-200"
                         title="View Cart"
                       >
-                        <ShoppingBag className="w-4 h-4 text-amber-400" />
+                        <ShoppingBag className="w-4 h-4 text-amber-600" />
                       </button>
                     </div>
                   ) : (
                     <button 
                       onClick={() => addToCart(dish, 1)}
-                      className="w-full py-2.5 sm:py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-[11px] sm:text-xs uppercase tracking-wider rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-amber-500/25 active:scale-[0.98] cursor-pointer"
+                      className="w-full py-2.5 sm:py-3.5 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-[11px] sm:text-xs uppercase tracking-wider rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
                       <span>Add to Cart</span>

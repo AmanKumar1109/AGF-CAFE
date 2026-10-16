@@ -101,7 +101,7 @@ export const MyComplaints = () => {
     return (
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 bg-stone-900/50 border border-white/5 rounded-3xl animate-pulse" />
+          <div key={i} className="h-32 bg-stone-100 border border-stone-200 rounded-3xl animate-pulse" />
         ))}
       </div>
     );
@@ -112,17 +112,17 @@ export const MyComplaints = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight font-serif">
+          <h1 className="text-2xl sm:text-3xl font-black text-stone-900 tracking-tight font-serif">
             My Complaints & Support
           </h1>
-          <p className="text-stone-400 font-medium text-xs sm:text-sm mt-1">
+          <p className="text-stone-600 font-medium text-xs sm:text-sm mt-1">
             Track resolution status, kitchen investigations, and manager replies
           </p>
         </div>
 
         <Link
           to="/complaint"
-          className="self-start sm:self-auto px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5"
+          className="self-start sm:self-auto px-5 py-2.5 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-sm transition-all flex items-center gap-1.5"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>New Ticket</span>
@@ -131,19 +131,19 @@ export const MyComplaints = () => {
 
       {/* Complaints List */}
       {complaints.length === 0 ? (
-        <div className="bg-stone-900/50 backdrop-blur-xl rounded-3xl border border-white/10 p-12 text-center shadow-xl space-y-4">
-          <div className="w-16 h-16 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl flex items-center justify-center mx-auto shadow-md shadow-amber-500/10">
+        <div className="bg-white rounded-3xl border border-stone-200 p-12 text-center shadow-sm space-y-4">
+          <div className="w-16 h-16 bg-amber-50 border border-amber-200 text-amber-700 rounded-2xl flex items-center justify-center mx-auto shadow-sm">
             <MessageSquareWarning className="w-8 h-8 stroke-[1.8]" />
           </div>
           <div>
-            <h2 className="text-lg font-black text-white mb-1">No Support Tickets Yet</h2>
-            <p className="text-xs font-semibold text-stone-400 max-w-sm mx-auto leading-relaxed">
+            <h2 className="text-lg font-black text-stone-900 mb-1">No Support Tickets Yet</h2>
+            <p className="text-xs font-semibold text-stone-600 max-w-sm mx-auto leading-relaxed">
               Facing cold food, delayed delivery, or missing beverages? Lodge a complaint anytime and our cafe management team will make it right.
             </p>
           </div>
           <Link
             to="/complaint"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-stone-800 hover:bg-stone-700 text-amber-400 border border-amber-500/30 font-black text-xs uppercase tracking-wider rounded-2xl transition"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-900 border border-stone-300 font-black text-xs uppercase tracking-wider rounded-2xl transition shadow-sm"
           >
             <Plus className="w-4 h-4" />
             <span>Lodge a Complaint</span>
@@ -160,7 +160,7 @@ export const MyComplaints = () => {
             return (
               <div
                 key={comp.id}
-                className="bg-stone-900/70 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-xl relative overflow-hidden transition hover:border-white/20"
+                className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm relative overflow-hidden transition hover:border-stone-300"
               >
                 {/* Status indicator side stripe */}
                 <div
@@ -170,7 +170,7 @@ export const MyComplaints = () => {
                       : isInProgress
                       ? 'bg-blue-500'
                       : isDismissed
-                      ? 'bg-stone-600'
+                      ? 'bg-stone-400'
                       : 'bg-amber-400'
                   }`}
                 />
@@ -179,19 +179,19 @@ export const MyComplaints = () => {
                   <div className="space-y-2">
                     {/* Ticket Header & Date */}
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-[10px] font-black bg-stone-800 text-amber-400 px-2.5 py-1 rounded-md tracking-wider uppercase font-mono border border-white/5">
+                      <span className="text-[10px] font-black bg-stone-100 text-stone-800 px-2.5 py-1 rounded-md tracking-wider uppercase font-mono border border-stone-200">
                         {ticketDisplayId}
                       </span>
 
                       {comp.orderId && (
-                        <span className="text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 px-2 py-0.5 rounded-md flex items-center gap-1">
+                        <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
                           <Package className="w-3 h-3" />
                           <span>Order #{comp.orderId}</span>
                         </span>
                       )}
 
-                      <span className="text-xs font-bold text-stone-400 flex items-center gap-1">
-                        <Calendar className="w-3 h-3 text-stone-500" />
+                      <span className="text-xs font-bold text-stone-500 flex items-center gap-1">
+                        <Calendar className="w-3 h-3 text-stone-400" />
                         {comp.createdAt?.toDate
                           ? comp.createdAt.toDate().toLocaleDateString('en-IN', {
                               day: 'numeric',
@@ -203,12 +203,12 @@ export const MyComplaints = () => {
                     </div>
 
                     {/* Category Title */}
-                    <h3 className="text-base font-black text-white font-serif tracking-tight">
+                    <h3 className="text-base font-black text-stone-900 font-serif tracking-tight">
                       {comp.issueType || 'General Cafe Inquiry'}
                     </h3>
 
                     {/* Description */}
-                    <p className="text-xs font-medium text-stone-300 leading-relaxed max-w-xl bg-stone-950/40 p-3.5 rounded-2xl border border-stone-800/80">
+                    <p className="text-xs font-medium text-stone-700 leading-relaxed max-w-xl bg-stone-50 p-3.5 rounded-2xl border border-stone-200">
                       "{comp.description}"
                     </p>
                   </div>
@@ -216,23 +216,23 @@ export const MyComplaints = () => {
                   {/* Status Badge */}
                   <div className="shrink-0 self-start sm:self-center">
                     {isResolved ? (
-                      <div className="flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-3.5 py-1.5 rounded-full border border-emerald-500/30 text-xs font-black uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 text-emerald-700 bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 text-xs font-black uppercase tracking-wider">
                         <CheckCircle2 className="w-4 h-4" />
                         <span>Resolved</span>
                       </div>
                     ) : isInProgress ? (
-                      <div className="flex items-center gap-1.5 text-blue-400 bg-blue-500/10 px-3.5 py-1.5 rounded-full border border-blue-500/30 text-xs font-black uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 text-blue-700 bg-blue-50 px-3.5 py-1.5 rounded-full border border-blue-200 text-xs font-black uppercase tracking-wider">
                         <RefreshCw className="w-4 h-4 animate-spin" />
                         <span>Investigating</span>
                       </div>
                     ) : isDismissed ? (
-                      <div className="flex items-center gap-1.5 text-stone-400 bg-stone-800 px-3.5 py-1.5 rounded-full border border-stone-700 text-xs font-black uppercase tracking-wider">
+                      <div className="flex items-center gap-1.5 text-stone-600 bg-stone-100 px-3.5 py-1.5 rounded-full border border-stone-200 text-xs font-black uppercase tracking-wider">
                         <XCircle className="w-4 h-4" />
                         <span>Closed</span>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-amber-400 bg-amber-500/10 px-3.5 py-1.5 rounded-full border border-amber-500/30 text-xs font-black uppercase tracking-wider">
-                        <Clock className="w-4 h-4 animate-pulse" />
+                      <div className="flex items-center gap-1.5 text-amber-800 bg-amber-50 px-3.5 py-1.5 rounded-full border border-amber-200 text-xs font-black uppercase tracking-wider">
+                        <Clock className="w-4 h-4" />
                         <span>Pending Review</span>
                       </div>
                     )}
@@ -241,18 +241,18 @@ export const MyComplaints = () => {
 
                 {/* Manager Official Response Box */}
                 {comp.adminReply && (
-                  <div className="mt-5 p-4 sm:p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent rounded-2xl border border-amber-500/25 flex gap-3.5 animate-in fade-in">
-                    <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+                  <div className="mt-5 p-4 sm:p-5 bg-amber-50/70 rounded-2xl border border-amber-200/80 flex gap-3.5 animate-in fade-in">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200 text-amber-800 flex items-center justify-center shrink-0 mt-0.5">
                       <MessageCircle className="w-5 h-5" />
                     </div>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <h4 className="text-[11px] font-black text-amber-400 uppercase tracking-wider">
+                        <h4 className="text-[11px] font-black text-amber-900 uppercase tracking-wider">
                           Official Response from Cafe Manager
                         </h4>
                         <span className="text-[10px] text-stone-500 font-semibold">• AGF Cafe Hospitality Team</span>
                       </div>
-                      <p className="text-xs sm:text-sm font-medium text-stone-200 leading-relaxed">
+                      <p className="text-xs sm:text-sm font-medium text-stone-800 leading-relaxed">
                         {comp.adminReply}
                       </p>
                     </div>

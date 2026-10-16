@@ -37,17 +37,17 @@ const ProtectedRoute = ({ children }) => {
   
   if (!currentUser) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-8">
-        <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4 text-amber-400">
+      <div className="min-h-[70vh] bg-white flex flex-col items-center justify-center text-center p-8">
+        <div className="w-16 h-16 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mb-4 text-amber-700">
           <User className="w-8 h-8" />
         </div>
-        <h2 className="text-2xl font-black text-white font-serif mb-2">Member Sign In Required</h2>
-        <p className="text-xs text-stone-400 max-w-sm mb-6 leading-relaxed">
+        <h2 className="text-2xl font-black text-stone-900 font-serif mb-2">Member Sign In Required</h2>
+        <p className="text-xs text-stone-600 max-w-sm mb-6 leading-relaxed">
           Please sign in to access your cafe orders, saved delivery addresses, reward vouchers, and customer lounge.
         </p>
         <button
           onClick={() => setIsAuthModalOpen(true)}
-          className="px-8 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-full shadow-lg shadow-amber-500/25 hover:from-amber-300 hover:to-amber-400 transition-all cursor-pointer"
+          className="px-8 py-3.5 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-full shadow-sm transition-all cursor-pointer"
         >
           Sign In / Create Account
         </button>

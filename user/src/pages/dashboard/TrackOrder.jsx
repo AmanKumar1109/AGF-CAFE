@@ -87,8 +87,8 @@ export const TrackOrder = () => {
 
   if (loading) {
     return (
-      <div className="p-16 text-center text-stone-400 font-black text-sm space-y-3">
-        <UtensilsCrossed className="w-10 h-10 text-amber-400 animate-bounce mx-auto" />
+      <div className="p-16 text-center text-stone-500 font-bold text-sm space-y-3">
+        <UtensilsCrossed className="w-10 h-10 text-amber-500 animate-bounce mx-auto" />
         <p className="tracking-wide uppercase text-xs">Connecting to Kitchen Delivery Network...</p>
       </div>
     );
@@ -96,9 +96,9 @@ export const TrackOrder = () => {
 
   if (!order) {
     return (
-      <div className="p-12 text-center space-y-4 bg-stone-900/60 rounded-3xl border border-white/10">
-        <p className="text-stone-300 font-bold">We couldn't find details for this order.</p>
-        <Link to="/dashboard/orders" className="inline-flex px-6 py-2.5 bg-amber-400 text-stone-950 font-black rounded-xl text-xs uppercase">
+      <div className="p-12 text-center space-y-4 bg-white rounded-3xl border border-stone-200 shadow-sm">
+        <p className="text-stone-700 font-bold">We couldn't find details for this order.</p>
+        <Link to="/dashboard/orders" className="inline-flex px-6 py-2.5 bg-amber-400 text-stone-950 font-black rounded-xl text-xs uppercase shadow-sm">
           Back to Orders
         </Link>
       </div>
@@ -116,7 +116,7 @@ export const TrackOrder = () => {
     <div ref={containerRef} className="pb-24 lg:pb-8 space-y-6">
       <Link 
         to="/dashboard/orders" 
-        className="inline-flex items-center gap-2 text-stone-400 hover:text-white font-black text-xs uppercase tracking-wider transition-colors px-1"
+        className="inline-flex items-center gap-2 text-stone-600 hover:text-stone-900 font-bold text-xs uppercase tracking-wider transition-colors px-1"
       >
         <ArrowLeft className="w-4 h-4" />
         <span>Back to Orders</span>
@@ -125,23 +125,23 @@ export const TrackOrder = () => {
       <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
         {/* Left Column: Vertical Timeline */}
         <div className="flex-1 w-full">
-          <div className="bg-stone-900/70 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
-            <div className="flex flex-wrap justify-between items-start gap-4 mb-8 pb-6 border-b border-white/5">
+          <div className="bg-white border border-stone-200 rounded-3xl p-6 sm:p-8 shadow-sm">
+            <div className="flex flex-wrap justify-between items-start gap-4 mb-8 pb-6 border-b border-stone-100">
               <div>
-                <h2 className="text-xl sm:text-2xl font-black text-white font-serif tracking-tight">
+                <h2 className="text-xl sm:text-2xl font-black text-stone-900 font-serif tracking-tight">
                   Order #{order?.id?.slice(0, 8)?.toUpperCase()}
                 </h2>
-                <p className="text-amber-400 font-extrabold text-xs mt-1 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
+                <p className="text-amber-700 font-bold text-xs mt-1 flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-amber-600" />
                   <span>{currentStatus === 'Delivered' ? 'Delivered successfully 🎉' : 'Express Cafe Doorstep Delivery 🛵'}</span>
                 </p>
               </div>
-              <span className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-full shadow-md ${
+              <span className={`px-4 py-1.5 text-xs font-black uppercase tracking-wider rounded-full shadow-sm ${
                 currentStatus === 'Delivered'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : currentStatus === 'Cancelled'
-                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                  : 'bg-amber-50 text-amber-800 border border-amber-200'
               }`}>
                 {currentStatus}
               </span>
@@ -150,11 +150,11 @@ export const TrackOrder = () => {
             {/* Stepper Timeline */}
             <div className="relative pt-2 pb-2 space-y-0">
               {/* Dashed Background Line */}
-              <div className="absolute left-[1.5rem] sm:left-[2rem] top-8 bottom-12 w-0.5 border-l-2 border-dashed border-stone-800 z-0" />
+              <div className="absolute left-[1.5rem] sm:left-[2rem] top-8 bottom-12 w-0.5 border-l-2 border-dashed border-stone-200 z-0" />
               
               {/* Animated Progress Line */}
               <div
-                className="absolute left-[1.5rem] sm:left-[2rem] top-8 w-0.5 bg-gradient-to-b from-amber-400 to-amber-500 z-0 transition-all duration-700 shadow-[0_0_12px_rgba(245,158,11,0.8)]"
+                className="absolute left-[1.5rem] sm:left-[2rem] top-8 w-0.5 bg-amber-500 z-0 transition-all duration-700"
                 style={{ height: `${Math.min(100, ((currentStep - 1) / 3) * 100)}%`, width: '2px' }}
               />
 
@@ -172,31 +172,28 @@ export const TrackOrder = () => {
                     } ${idx !== steps.length - 1 ? 'pb-10 sm:pb-12' : ''}`}
                   >
                     <div className="relative shrink-0">
-                      {isActive && (
-                        <span className="absolute -inset-2.5 rounded-full bg-amber-400/30 animate-ping z-0" />
-                      )}
-                      <div className={`relative z-10 w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-xl border-2 transition-all duration-500 ${
+                      <div className={`relative z-10 w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-sm border-2 transition-all duration-300 ${
                         isActive 
-                          ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-stone-950 border-amber-300 scale-110 shadow-amber-500/40'
+                          ? 'bg-amber-400 text-stone-950 border-amber-400 scale-105 shadow-sm'
                           : isCompleted 
-                          ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-emerald-400 shadow-emerald-500/30'
-                          : 'bg-stone-800 text-stone-500 border-white/5'
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                          : 'bg-stone-100 text-stone-400 border-stone-200'
                       }`}>
                         <Icon className="w-5 h-5 sm:w-7 sm:h-7 stroke-[2.2]" />
                         {isCompleted && (
-                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center border-2 border-stone-900 shadow-md">
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-emerald-600 rounded-full flex items-center justify-center border-2 border-white shadow-sm">
                             <Check className="w-3 h-3 text-white stroke-[3]" />
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className={`flex-1 pt-1.5 sm:pt-3 transition-all duration-500 ${isActive ? 'translate-x-2' : ''}`}>
+                    <div className={`flex-1 pt-1.5 sm:pt-3 transition-all duration-300 ${isActive ? 'translate-x-1' : ''}`}>
                       <h4 className={`font-black text-base sm:text-lg tracking-tight ${
-                        isActive ? 'text-amber-400' : isCompleted ? 'text-emerald-400' : 'text-stone-400'
+                        isActive ? 'text-amber-800' : isCompleted ? 'text-emerald-700' : 'text-stone-400'
                       }`}>
                         {s.title}
                       </h4>
-                      <p className="text-xs sm:text-sm font-medium text-stone-400 mt-1 leading-relaxed">
+                      <p className="text-xs sm:text-sm font-medium text-stone-500 mt-1 leading-relaxed">
                         {s.desc}
                       </p>
                     </div>
@@ -210,21 +207,21 @@ export const TrackOrder = () => {
         {/* Right Column: Rider Info & Destination Address */}
         <div className="w-full lg:w-80 space-y-5">
           {/* Rider Card */}
-          <div className="track-item bg-stone-900/70 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
-            <h3 className="font-black text-stone-400 text-xs uppercase tracking-wider mb-4">
+          <div className="track-item bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+            <h3 className="font-black text-stone-500 text-xs uppercase tracking-wider mb-4">
               Assigned Delivery Partner
             </h3>
             
             <div className="flex items-center gap-4 mb-6">
-              <div className="w-14 h-14 rounded-2xl bg-stone-800 overflow-hidden border-2 border-amber-400 shadow-md flex-shrink-0 flex items-center justify-center">
-                <Bike className="w-7 h-7 text-amber-400" />
+              <div className="w-14 h-14 rounded-2xl bg-stone-100 overflow-hidden border-2 border-amber-400 shadow-sm flex-shrink-0 flex items-center justify-center text-amber-600">
+                <Bike className="w-7 h-7" />
               </div>
               <div className="min-w-0">
-                <h4 className="font-black text-white text-base truncate">
+                <h4 className="font-black text-stone-900 text-base truncate">
                   {order?.assignedPartnerName || 'AGF Express Rider'}
                 </h4>
-                <div className="flex items-center gap-1 text-xs font-bold text-amber-400 mt-0.5">
-                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /> 
+                <div className="flex items-center gap-1 text-xs font-bold text-amber-700 mt-0.5">
+                  <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500" /> 
                   <span>4.9 (500+ Cafe deliveries)</span>
                 </div>
               </div>
@@ -235,14 +232,14 @@ export const TrackOrder = () => {
                 <>
                   <a 
                     href={`tel:${order.assignedPartnerPhone}`} 
-                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md shadow-amber-500/20"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-sm"
                   >
                     <Phone className="w-4 h-4 stroke-[2.5]" />
                     <span>Call</span>
                   </a>
                   <a 
                     href={`sms:${order.assignedPartnerPhone}`} 
-                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-800 hover:bg-stone-700 text-stone-200 font-black text-xs uppercase tracking-wider rounded-xl transition-colors border border-white/5"
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-stone-200"
                   >
                     <MessageSquare className="w-4 h-4 stroke-[2.5]" />
                     <span>SMS</span>
@@ -250,11 +247,11 @@ export const TrackOrder = () => {
                 </>
               ) : (
                 <>
-                  <button disabled className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-800/60 text-stone-500 font-black text-xs rounded-xl cursor-not-allowed border border-white/5">
+                  <button disabled className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-100 text-stone-400 font-bold text-xs rounded-xl cursor-not-allowed border border-stone-200">
                     <Phone className="w-4 h-4" />
                     <span>Call</span>
                   </button>
-                  <button disabled className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-800/60 text-stone-500 font-black text-xs rounded-xl cursor-not-allowed border border-white/5">
+                  <button disabled className="flex-1 flex items-center justify-center gap-2 py-3 bg-stone-100 text-stone-400 font-bold text-xs rounded-xl cursor-not-allowed border border-stone-200">
                     <MessageSquare className="w-4 h-4" />
                     <span>Message</span>
                   </button>
@@ -265,17 +262,17 @@ export const TrackOrder = () => {
 
           {/* Delivery OTP Security Badge */}
           {order?.deliveryOtp && currentStatus !== 'Delivered' && (
-            <div className="track-item bg-amber-500/10 border border-amber-500/30 rounded-3xl p-6 shadow-xl space-y-2">
-              <div className="flex items-center gap-2 text-amber-400">
-                <ShieldCheck className="w-5 h-5" />
+            <div className="track-item bg-amber-50 border border-amber-200 rounded-3xl p-6 shadow-sm space-y-2">
+              <div className="flex items-center gap-2 text-amber-800">
+                <ShieldCheck className="w-5 h-5 text-amber-600" />
                 <span className="text-xs font-black uppercase tracking-wider">Delivery PIN</span>
               </div>
-              <div className="text-center py-3 bg-stone-900 border border-amber-500/40 rounded-2xl">
-                <span className="text-2xl font-black font-mono tracking-[0.3em] text-amber-400">
+              <div className="text-center py-3 bg-white border border-amber-300 rounded-2xl shadow-sm">
+                <span className="text-2xl font-black font-mono tracking-[0.3em] text-amber-700">
                   {order.deliveryOtp}
                 </span>
               </div>
-              <p className="text-[11px] text-stone-400 text-center font-medium">
+              <p className="text-[11px] text-stone-600 text-center font-medium">
                 Share this PIN only with your delivery partner at handover
               </p>
             </div>
@@ -283,13 +280,13 @@ export const TrackOrder = () => {
 
           {/* Delivery Destination Address */}
           {order?.shippingAddress && (
-            <div className="track-item bg-stone-900/70 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
-              <h3 className="font-black text-stone-400 text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-amber-400" />
+            <div className="track-item bg-white border border-stone-200 rounded-3xl p-6 shadow-sm">
+              <h3 className="font-black text-stone-500 text-xs uppercase tracking-wider mb-3 flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-amber-600" />
                 <span>Delivery Address</span>
               </h3>
-              <p className="text-xs font-black text-white">{order.shippingAddress.fullName || order.customerName}</p>
-              <p className="text-xs text-stone-400 font-medium mt-1 leading-relaxed">
+              <p className="text-xs font-black text-stone-900">{order.shippingAddress.fullName || order.customerName}</p>
+              <p className="text-xs text-stone-600 font-medium mt-1 leading-relaxed">
                 {order.shippingAddress.street || order.shippingAddress.address}, {order.shippingAddress.locality || ''}
               </p>
               <p className="text-xs text-stone-500 font-medium">

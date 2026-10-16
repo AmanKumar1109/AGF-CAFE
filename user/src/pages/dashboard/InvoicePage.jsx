@@ -30,7 +30,7 @@ export const InvoicePage = () => {
 
   if (loading) {
     return (
-      <div className="p-16 text-center font-black text-amber-400">
+      <div className="p-16 text-center font-bold text-stone-600">
         Generating Cafe Tax Invoice...
       </div>
     );
@@ -38,7 +38,7 @@ export const InvoicePage = () => {
 
   if (!order) {
     return (
-      <div className="p-12 text-center font-black text-rose-400 bg-stone-900 rounded-3xl border border-white/10">
+      <div className="p-12 text-center font-bold text-rose-600 bg-white rounded-3xl border border-stone-200 shadow-sm">
         Tax Invoice Not Found!
       </div>
     );
@@ -131,7 +131,7 @@ export const InvoicePage = () => {
       <div className="mb-6 print:hidden">
         <Link 
           to="/dashboard/orders" 
-          className="inline-flex items-center gap-2 text-stone-400 hover:text-white font-black text-xs uppercase tracking-wider transition-colors"
+          className="inline-flex items-center gap-2 text-stone-600 hover:text-stone-900 font-bold text-xs uppercase tracking-wider transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back to My Orders</span>
@@ -141,7 +141,7 @@ export const InvoicePage = () => {
       <div className="flex flex-col md:flex-row gap-8 justify-center items-start print:m-0 print:p-0 print:gap-0 print:block print:w-[80mm] print:mx-0">
         
         {/* Left/Main Column: Thermal Receipt */}
-        <div className="thermal-print-container w-full max-w-[380px] bg-white rounded-2xl shadow-2xl p-6 font-mono text-[12px] leading-tight text-black print:shadow-none print:w-[80mm] print:max-w-[80mm] print:p-2 print:mx-0 print:ml-0 border border-stone-200">
+        <div className="thermal-print-container w-full max-w-[380px] bg-white rounded-2xl shadow-sm p-6 font-mono text-[12px] leading-tight text-black print:shadow-none print:w-[80mm] print:max-w-[80mm] print:p-2 print:mx-0 print:ml-0 border border-stone-200">
           
           {/* Header */}
           <div className="text-center mb-3">
@@ -245,17 +245,17 @@ export const InvoicePage = () => {
 
         {/* Right Column: Actions (Hidden on Print) */}
         <div className="w-full md:w-72 shrink-0 space-y-4 print:hidden">
-          <div className="bg-stone-900/80 backdrop-blur-xl p-6 rounded-3xl border border-white/10 shadow-xl space-y-4">
-            <h2 className="text-xs font-black text-stone-400 uppercase tracking-wider">Print Options</h2>
+          <div className="bg-white p-6 rounded-3xl border border-stone-200 shadow-sm space-y-4">
+            <h2 className="text-xs font-black text-stone-500 uppercase tracking-wider">Print Options</h2>
             
             <button 
               onClick={handlePrint}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-amber-400 hover:bg-amber-500 text-stone-950 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-sm cursor-pointer"
             >
               <Printer className="w-4 h-4 stroke-[2.5]" />
               <span>Print Tax Receipt</span>
             </button>
-            <p className="text-[11px] text-stone-400 text-center leading-relaxed font-medium">
+            <p className="text-[11px] text-stone-500 text-center leading-relaxed font-medium">
               Uses standard 80mm thermal receipt format. Select "80mm Roll" or "Save as PDF" when printing.
             </p>
           </div>

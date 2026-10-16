@@ -63,7 +63,7 @@ export const DashboardBottomNav = () => {
 
   return (
     <>
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-stone-950/90 backdrop-blur-2xl border-t border-white/10 shadow-[0_-10px_35px_rgba(0,0,0,0.5)] z-40 pb-safe">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-stone-200 shadow-md z-40 pb-safe">
         <div className="flex items-center justify-around px-2 py-2.5">
           {mainNavItems.map((item) => (
             <NavLink
@@ -73,8 +73,8 @@ export const DashboardBottomNav = () => {
               className={({ isActive }) =>
                 `flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all duration-200 ${
                   isActive 
-                    ? 'text-stone-950 font-black bg-gradient-to-r from-amber-400 to-amber-500 shadow-md shadow-amber-500/25 scale-105' 
-                    : 'text-stone-400 hover:text-white font-bold'
+                    ? 'text-stone-950 font-black bg-amber-400 shadow-sm' 
+                    : 'text-stone-600 hover:text-stone-900 font-bold'
                 }`
               }
             >
@@ -84,7 +84,7 @@ export const DashboardBottomNav = () => {
           ))}
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-stone-400 hover:text-white font-bold transition-all cursor-pointer"
+            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-stone-600 hover:text-stone-900 font-bold transition-all cursor-pointer"
           >
             <MoreHorizontal className="w-5 h-5 stroke-[2.2]" />
             <span className="text-[10px] font-black">More</span>
@@ -97,19 +97,19 @@ export const DashboardBottomNav = () => {
         <div className="lg:hidden fixed inset-0 z-50 flex justify-end flex-col">
           <div
             ref={bgRef}
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             onClick={closeDrawer}
           />
           <div
             ref={drawerRef}
-            className="relative bg-stone-900 border-t border-white/10 rounded-t-3xl p-6 pb-12 shadow-2xl z-10"
+            className="relative bg-white border-t border-stone-200 rounded-t-3xl p-6 pb-12 shadow-2xl z-10"
           >
-            <div className="w-12 h-1.5 bg-stone-700 rounded-full mx-auto mb-6" />
+            <div className="w-12 h-1.5 bg-stone-300 rounded-full mx-auto mb-6" />
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-black text-white tracking-tight">Dashboard Navigation</h3>
+              <h3 className="text-lg font-black text-stone-900 tracking-tight">Dashboard Navigation</h3>
               <button 
                 onClick={closeDrawer} 
-                className="p-2 bg-stone-800 text-stone-400 hover:text-white rounded-full transition-colors cursor-pointer"
+                className="p-2 bg-stone-100 text-stone-500 hover:text-stone-900 rounded-full transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -122,10 +122,10 @@ export const DashboardBottomNav = () => {
                   to={item.path}
                   onClick={closeDrawer}
                   className={({ isActive }) =>
-                    `flex items-center gap-4 p-3.5 rounded-2xl font-black text-xs transition-all ${
+                    `flex items-center gap-4 p-3.5 rounded-2xl font-bold text-xs transition-all ${
                       isActive 
-                        ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 shadow-md' 
-                        : 'bg-stone-800/60 text-stone-300 hover:bg-stone-800 hover:text-white border border-white/5'
+                        ? 'bg-amber-400 text-stone-950 font-black shadow-sm' 
+                        : 'bg-stone-50 text-stone-700 hover:bg-stone-100 hover:text-stone-900 border border-stone-200'
                     }`
                   }
                 >
@@ -133,13 +133,13 @@ export const DashboardBottomNav = () => {
                   <span>{item.label}</span>
                 </NavLink>
               ))}
-              <div className="h-px bg-white/5 my-3" />
+              <div className="h-px bg-stone-200 my-3" />
               <button
                 onClick={() => {
                   closeDrawer();
                   logout();
                 }}
-                className="w-full flex items-center gap-4 p-3.5 rounded-2xl font-black text-xs bg-rose-950/30 text-rose-400 hover:bg-rose-950/50 hover:text-rose-300 transition-colors text-left border border-rose-500/20 cursor-pointer"
+                className="w-full flex items-center gap-4 p-3.5 rounded-2xl font-bold text-xs bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700 transition-colors text-left border border-rose-200 cursor-pointer"
               >
                 <LogOut className="w-4 h-4 stroke-[2.5]" />
                 <span>Sign Out Account</span>

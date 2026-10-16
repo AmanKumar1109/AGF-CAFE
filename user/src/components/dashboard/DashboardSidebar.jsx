@@ -34,10 +34,10 @@ export const DashboardSidebar = () => {
   const userInitial = (userName?.[0] || currentUser?.email?.[0] || 'C').toUpperCase();
 
   return (
-    <aside className="w-64 bg-stone-900/80 backdrop-blur-2xl border border-white/10 shadow-2xl rounded-3xl p-5 sticky top-24 z-20 flex-shrink-0 flex flex-col">
+    <aside className="w-64 bg-white border border-stone-200 shadow-sm rounded-3xl p-5 sticky top-24 z-20 flex-shrink-0 flex flex-col">
       {/* Profile Summary Card */}
-      <div className="flex items-center gap-3.5 mb-7 p-3 bg-gradient-to-br from-stone-800/80 to-stone-900/80 rounded-2xl border border-amber-500/20 shadow-inner">
-        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-400/80 shadow-md flex-shrink-0 flex items-center justify-center bg-gradient-to-tr from-amber-500 to-amber-600 text-stone-950 font-black text-lg">
+      <div className="flex items-center gap-3.5 mb-6 p-3 bg-stone-50 rounded-2xl border border-stone-200">
+        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-amber-500 flex-shrink-0 flex items-center justify-center bg-amber-500 text-stone-950 font-black text-lg">
           {displayPhoto ? (
             <img
               src={displayPhoto}
@@ -49,9 +49,9 @@ export const DashboardSidebar = () => {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="font-black text-white text-sm truncate tracking-tight">{userName}</h3>
-          <div className="flex items-center gap-1 text-[11px] font-extrabold text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 rounded-full inline-flex mt-1">
-            <Sparkles className="w-3 h-3 text-amber-400" />
+          <h3 className="font-black text-stone-900 text-sm truncate tracking-tight">{userName}</h3>
+          <div className="flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-100 border border-amber-200 px-2.5 py-0.5 rounded-full inline-flex mt-1">
+            <Sparkles className="w-3 h-3 text-amber-600" />
             <span>Gold Member ☕</span>
           </div>
         </div>
@@ -65,10 +65,10 @@ export const DashboardSidebar = () => {
             to={item.path}
             end={item.exact}
             className={({ isActive }) =>
-              `flex items-center gap-3.5 px-4 py-3 rounded-2xl font-black text-xs tracking-wide transition-all duration-300 ${
+              `flex items-center gap-3.5 px-4 py-3 rounded-2xl font-bold text-xs tracking-wide transition-all duration-200 ${
                 isActive
-                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-stone-950 shadow-lg shadow-amber-500/25 translate-x-1.5'
-                  : 'text-stone-300 hover:text-white hover:bg-stone-800/60 border border-transparent'
+                  ? 'bg-amber-400 text-stone-950 font-black shadow-sm translate-x-1'
+                  : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-transparent'
               }`
             }
           >
@@ -79,10 +79,10 @@ export const DashboardSidebar = () => {
       </nav>
 
       {/* Logout Footer */}
-      <div className="pt-4 mt-6 border-t border-white/5">
+      <div className="pt-4 mt-6 border-t border-stone-200">
         <button
           onClick={logout}
-          className="flex items-center gap-3.5 px-4 py-3 rounded-2xl font-black text-xs text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-all duration-200 w-full text-left cursor-pointer border border-transparent hover:border-rose-500/20"
+          className="flex items-center gap-3.5 px-4 py-3 rounded-2xl font-bold text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-all duration-200 w-full text-left cursor-pointer border border-transparent hover:border-rose-200"
         >
           <LogOut className="w-4 h-4 stroke-[2.2]" />
           <span>Sign Out</span>

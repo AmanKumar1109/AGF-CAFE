@@ -9,7 +9,7 @@ import { Toast } from '../common/Toast';
 
 export const DashboardLayout = () => {
   return (
-    <div className="min-h-screen w-full bg-[#0c0e12] flex flex-col font-sans text-stone-100 antialiased selection:bg-amber-500 selection:text-stone-950 print:bg-white print:text-black">
+    <div className="min-h-screen w-full bg-white flex flex-col font-sans text-stone-900 antialiased selection:bg-amber-500 selection:text-stone-950 print:bg-white print:text-black">
       {/* Top Navbar */}
       <div className="print:hidden">
         <Navbar />
