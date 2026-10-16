@@ -219,9 +219,16 @@ export const CurrentOrdersView = () => {
                         <Phone className="w-3.5 h-3.5 text-amber-500" />
                         <span>{customerPhone}</span>
                       </a>
-                      <span className="font-mono font-black text-slate-900 text-sm">
-                        ₹{parseFloat(total).toFixed(2)}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-mono font-black text-slate-900 text-sm">
+                          ₹{parseFloat(total).toFixed(2)}
+                        </span>
+                        {order.couponApplied && (
+                          <span className="block text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.2 rounded mt-0.5">
+                            {order.couponApplied} (-₹{parseFloat(order.discountAmount || 0)})
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <p className="text-[11px] text-slate-500 flex items-start gap-1 line-clamp-1">

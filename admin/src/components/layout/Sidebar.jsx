@@ -10,6 +10,7 @@ import {
   PanelLeftClose,
   Star,
   MessageSquareWarning,
+  Ticket,
 } from 'lucide-react';
 import { MAIN_NAV_ITEMS, CONTENT_NAV_ITEMS, BOTTOM_NAV_ITEMS } from '../../constants/navigation';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
@@ -20,6 +21,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
   const { activeOrders } = useAdminOrders();
   const [pendingReviewsCount, setPendingReviewsCount] = useState(0);
   const [pendingComplaintsCount, setPendingComplaintsCount] = useState(0);
+  const [activeCouponsCount, setActiveCouponsCount] = useState(0);
 
   useEffect(() => {
     try {
@@ -33,9 +35,15 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
         setPendingComplaintsCount(snap.size);
       }, (err) => console.warn('Sidebar complaints count error:', err));
 
+      const qCoup = query(collection(db, 'coupons'), where('isActive', '==', true));
+      const unsubCoup = onSnapshot(qCoup, (snap) => {
+        setActiveCouponsCount(snap.size);
+      }, (err) => console.warn('Sidebar coupons count error:', err));
+
       return () => {
         unsubRev();
         unsubComp();
+        unsubCoup();
       };
     } catch (e) {
       console.warn('Sidebar listener setup error:', e);
@@ -53,6 +61,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
         return <Package className={className} />;
       case 'Users':
         return <Users className={className} />;
+      case 'Ticket':
+        return <Ticket className={className} />;
       case 'Star':
         return <Star className={className} />;
       case 'MessageSquareWarning':
@@ -147,6 +157,12 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
                   pendingComplaintsCount > 0 ? (
                     <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-900 border border-rose-300 animate-pulse">
                       {pendingComplaintsCount}
+                    </span>
+                  ) : null
+                ) : item.id === 'coupons' ? (
+                  activeCouponsCount > 0 ? (
+                    <span className="text-[11px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300">
+                      {activeCouponsCount}
                     </span>
                   ) : null
                 ) : item.badge && (

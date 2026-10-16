@@ -217,6 +217,11 @@ export const OrderHistoryView = () => {
                       </td>
                       <td className="p-4 font-mono font-black text-slate-900">
                         ₹{parseFloat(total).toFixed(2)}
+                        {order.couponApplied && (
+                          <span className="block text-[10px] font-bold text-emerald-700 font-sans mt-0.5">
+                            {order.couponApplied} (-₹{parseFloat(order.discountAmount || 0)})
+                          </span>
+                        )}
                       </td>
                       <td className="p-4 uppercase text-[10px] font-bold text-slate-500">
                         {order.paymentMethod || 'Online'}
@@ -308,6 +313,13 @@ export const OrderHistoryView = () => {
                   ))}
                 </div>
               </div>
+
+              {selectedOrder.discountAmount > 0 && (
+                <div className="flex justify-between items-center text-xs font-bold text-emerald-600 bg-emerald-50 p-2.5 rounded-xl border border-emerald-200">
+                  <span>Coupon Discount ({selectedOrder.couponApplied || 'Promo Code'}):</span>
+                  <span>-₹{parseFloat(selectedOrder.discountAmount).toFixed(2)}</span>
+                </div>
+              )}
 
               <div className="flex justify-between items-center pt-2 font-black text-base border-t border-slate-100">
                 <span className="text-slate-600">Grand Total:</span>

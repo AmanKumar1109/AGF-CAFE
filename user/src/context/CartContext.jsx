@@ -1,8 +1,14 @@
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { db } from '../firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { useAuth } from './useAuth';
 
 export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
+  const { currentUser, userProfile } = useAuth();
+
+  // Cart state
   const [cart, setCart] = useState(() => {
     try {
       const savedCart = localStorage.getItem('agf_cafe_cart');
@@ -15,6 +21,22 @@ export const CartProvider = ({ children }) => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
+  // Coupon state
+  const [availableCoupons, setAvailableCoupons] = useState([]);
+  const [appliedCoupon, setAppliedCoupon] = useState(() => {
+    try {
+      const savedCoupon = localStorage.getItem('agf_cafe_coupon');
+      return savedCoupon ? JSON.parse(savedCoupon) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoError, setPromoError] = useState('');
+  const [promoSuccess, setPromoSuccess] = useState('');
+
+  // Persist cart
   useEffect(() => {
     try {
       localStorage.setItem('agf_cafe_cart', JSON.stringify(cart));
@@ -23,12 +45,78 @@ export const CartProvider = ({ children }) => {
     }
   }, [cart]);
 
+  // Persist applied coupon
+  useEffect(() => {
+    try {
+      if (appliedCoupon) {
+        localStorage.setItem('agf_cafe_coupon', JSON.stringify(appliedCoupon));
+      } else {
+        localStorage.removeItem('agf_cafe_coupon');
+      }
+    } catch (e) {
+      console.error('Failed to save coupon to local storage', e);
+    }
+  }, [appliedCoupon]);
+
   const showToast = (message) => {
     setToastMessage(message);
     setTimeout(() => {
       setToastMessage(null);
     }, 3000);
   };
+
+  // Real-time listener for available coupons from Firestore
+  useEffect(() => {
+    try {
+      const q = collection(db, 'coupons');
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+
+          const list = snapshot.docs
+            .map((d) => ({ id: d.id, ...d.data() }))
+            .filter((c) => {
+              // Active check
+              if (c.isActive === false) return false;
+
+              // Expiry check
+              if (c.validUntil) {
+                const expiry = new Date(c.validUntil);
+                if (expiry < today) return false;
+              }
+
+              // Target audience check
+              if (c.userId) {
+                if (!currentUser || c.userId !== currentUser.uid) return false;
+              }
+
+              // Check if user already used this personal coupon
+              if (userProfile?.usedCoupons) {
+                const usedList = Array.isArray(userProfile.usedCoupons)
+                  ? userProfile.usedCoupons
+                  : [userProfile.usedCoupons];
+                if (usedList.includes(c.id) || usedList.includes(c.code)) {
+                  return false;
+                }
+              }
+
+              return true;
+            });
+
+          setAvailableCoupons(list);
+        },
+        (error) => {
+          console.warn('Error fetching available coupons:', error);
+        }
+      );
+
+      return () => unsubscribe();
+    } catch (err) {
+      console.warn('Coupon listener initialization error:', err);
+    }
+  }, [currentUser, userProfile?.usedCoupons]);
 
   const getCartItemId = (item) => {
     if (item.cartItemId) return item.cartItemId;
@@ -94,6 +182,15 @@ export const CartProvider = ({ children }) => {
 
   const clearCart = () => {
     setCart([]);
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setPromoError('');
+    setPromoSuccess('');
+    try {
+      localStorage.removeItem('agf_cafe_coupon');
+    } catch (e) {
+      console.warn('Coupon removal error:', e);
+    }
   };
 
   const getItemTotalQuantity = (itemId) => {
@@ -102,10 +199,122 @@ export const CartProvider = ({ children }) => {
       .reduce((sum, item) => sum + item.quantity, 0);
   };
 
+  // Base calculations
   const totalCount = cart.reduce((total, item) => total + item.quantity, 0);
   const subtotal = cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  const deliveryFee = subtotal > 499 || subtotal === 0 ? 0 : 40;
-  const grandTotal = subtotal + deliveryFee;
+
+  // Recalculate discount whenever subtotal or appliedCoupon changes
+  useEffect(() => {
+    if (!appliedCoupon) {
+      setDiscountAmount(0);
+      return;
+    }
+
+    const minRequired = parseFloat(appliedCoupon.minOrderValue) || 0;
+
+    // Auto-remove if cart dropped below threshold
+    if (subtotal < minRequired) {
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+      setPromoSuccess('');
+      setPromoError(`Coupon ${appliedCoupon.code} requires minimum cart of ₹${minRequired}`);
+      showToast(`Coupon ${appliedCoupon.code} removed: Cart is below ₹${minRequired}`);
+      return;
+    }
+
+    let calculatedDiscount = 0;
+    if (appliedCoupon.discountType === 'percentage') {
+      const pct = parseFloat(appliedCoupon.discountValue) || 0;
+      calculatedDiscount = (subtotal * pct) / 100;
+      const maxLimit = parseFloat(appliedCoupon.maxDiscount) || 0;
+      if (maxLimit > 0 && calculatedDiscount > maxLimit) {
+        calculatedDiscount = maxLimit;
+      }
+    } else {
+      // Flat discount
+      calculatedDiscount = parseFloat(appliedCoupon.discountValue) || 0;
+    }
+
+    // Discount cannot exceed subtotal
+    calculatedDiscount = Math.min(calculatedDiscount, subtotal);
+    setDiscountAmount(Math.round(calculatedDiscount));
+  }, [subtotal, appliedCoupon]);
+
+  // Apply Promo Action
+  const handleApplyPromo = useCallback(
+    (codeToApply) => {
+      setPromoError('');
+      setPromoSuccess('');
+
+      const raw = (codeToApply || promoCodeInput || '').trim().toUpperCase();
+      if (!raw) {
+        setPromoError('Please enter a coupon code');
+        return false;
+      }
+
+      if (cart.length === 0 || subtotal === 0) {
+        setPromoError('Your cart is empty. Add food items first!');
+        return false;
+      }
+
+      const match = availableCoupons.find((c) => c.code?.toUpperCase() === raw);
+      if (!match) {
+        setPromoError(`Coupon "${raw}" is invalid or expired`);
+        return false;
+      }
+
+      if (match.isActive === false) {
+        setPromoError(`Coupon "${raw}" is currently not active`);
+        return false;
+      }
+
+      const minRequired = parseFloat(match.minOrderValue) || 0;
+      if (subtotal < minRequired) {
+        setPromoError(`Add items worth ₹${minRequired - subtotal} more to use "${match.code}" (Min: ₹${minRequired})`);
+        return false;
+      }
+
+      // Calculate anticipated discount
+      let discount = 0;
+      if (match.discountType === 'percentage') {
+        const pct = parseFloat(match.discountValue) || 0;
+        discount = (subtotal * pct) / 100;
+        const maxLimit = parseFloat(match.maxDiscount) || 0;
+        if (maxLimit > 0 && discount > maxLimit) {
+          discount = maxLimit;
+        }
+      } else {
+        discount = parseFloat(match.discountValue) || 0;
+      }
+      discount = Math.min(discount, subtotal);
+      discount = Math.round(discount);
+
+      setAppliedCoupon(match);
+      setDiscountAmount(discount);
+      setPromoCodeInput('');
+      setPromoSuccess(`🎉 Coupon "${match.code}" applied! You save ₹${discount}`);
+      showToast(`Coupon "${match.code}" applied: ₹${discount} saved!`);
+      return true;
+    },
+    [availableCoupons, promoCodeInput, cart.length, subtotal]
+  );
+
+  // Remove Promo Action
+  const handleRemovePromo = useCallback(() => {
+    const prevCode = appliedCoupon?.code;
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setPromoError('');
+    setPromoSuccess('');
+    if (prevCode) {
+      showToast(`Coupon "${prevCode}" removed`);
+    }
+  }, [appliedCoupon]);
+
+  // Delivery & Final Total
+  const effectiveSubtotal = Math.max(0, subtotal - discountAmount);
+  const deliveryFee = effectiveSubtotal > 499 || subtotal === 0 ? 0 : 40;
+  const grandTotal = Math.max(0, effectiveSubtotal + deliveryFee);
 
   return (
     <CartContext.Provider
@@ -120,10 +329,22 @@ export const CartProvider = ({ children }) => {
         getItemTotalQuantity,
         totalCount,
         subtotal,
+        discountAmount,
         deliveryFee,
         grandTotal,
         toastMessage,
         showToast,
+        // Coupon system exports
+        availableCoupons,
+        appliedCoupon,
+        promoCodeInput,
+        setPromoCodeInput,
+        promoError,
+        setPromoError,
+        promoSuccess,
+        setPromoSuccess,
+        handleApplyPromo,
+        handleRemovePromo,
       }}
     >
       {children}

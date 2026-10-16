@@ -26,6 +26,7 @@ import { ReviewsView } from './components/reviews/ReviewsView';
 import { ComplaintsView } from './components/complaints/ComplaintsView';
 import { ContentManagementView } from './components/content/ContentManagementView';
 import { AuditLogsView } from './components/audit/AuditLogsView';
+import { CouponsView } from './components/coupons/CouponsView';
 import { AdminOrdersProvider } from './context/AdminOrdersContext';
 
 export default function App() {
@@ -73,6 +74,8 @@ export default function App() {
           <ProductsManager />
         ) : activeTab === 'orders' ? (
           <OrdersManager />
+        ) : activeTab === 'coupons' ? (
+          <CouponsView />
         ) : activeTab === 'customers' ? (
           <UsersView />
         ) : activeTab === 'reviews' ? (

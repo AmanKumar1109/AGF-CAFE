@@ -15,16 +15,35 @@ import {
   Briefcase,
   Tag,
   Clock,
-  ArrowRight
+  ArrowRight,
+  Ticket,
+  AlertCircle
 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, arrayUnion, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useCart } from '../../../context/useCart';
 import { useAuth } from '../../../context/useAuth';
 import { Button } from '../../../components/ui/Button';
 
 export const CheckoutModal = ({ isOpen, onClose }) => {
-  const { cart, grandTotal, clearCart, showToast } = useCart();
+  const {
+    cart,
+    subtotal,
+    discountAmount,
+    deliveryFee,
+    grandTotal,
+    clearCart,
+    showToast,
+    appliedCoupon,
+    availableCoupons,
+    promoCodeInput,
+    setPromoCodeInput,
+    promoError,
+    setPromoError,
+    promoSuccess,
+    handleApplyPromo,
+    handleRemovePromo,
+  } = useCart();
   const { currentUser, userProfile, addAddress, setIsAuthModalOpen } = useAuth();
 
   // Address state
@@ -278,6 +297,11 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       shippingAddress: finalShippingAddress,
       paymentMethod: paymentMethod,
       items: cart,
+      subtotal: subtotal,
+      discountAmount: discountAmount || 0,
+      couponApplied: appliedCoupon ? appliedCoupon.code : null,
+      appliedCouponId: appliedCoupon ? (appliedCoupon.id || null) : null,
+      deliveryFee: deliveryFee,
       grandTotal: grandTotal,
       totalAmount: grandTotal,
       status: 'Order Received',
@@ -288,6 +312,18 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
 
     try {
       await addDoc(collection(db, 'orders'), orderPayload);
+
+      // If user is signed in and used a coupon, record it in usedCoupons
+      if (appliedCoupon && currentUser) {
+        try {
+          const userDocRef = doc(db, 'users', currentUser.uid);
+          await updateDoc(userDocRef, {
+            usedCoupons: arrayUnion(appliedCoupon.id || appliedCoupon.code),
+          });
+        } catch (uErr) {
+          console.warn('Could not record used coupon on user document:', uErr);
+        }
+      }
     } catch (err) {
       console.warn('Firestore order push error:', err);
     }
@@ -299,6 +335,10 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       phone: finalCustomerPhone,
       address: finalShippingAddress.addressLine1,
       paymentMethod: paymentMethod,
+      subtotal: subtotal,
+      discount: discountAmount,
+      couponCode: appliedCoupon?.code || null,
+      deliveryFee: deliveryFee,
       total: grandTotal,
     });
 
@@ -427,6 +467,22 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                   <span className="font-bold text-amber-400 uppercase">
                     {confirmedOrder.paymentMethod === 'cash' ? 'Cash on Delivery' : 'Online UPI / Card'}
                   </span>
+                </div>
+                {confirmedOrder.subtotal !== undefined && (
+                  <div className="flex justify-between border-t border-stone-800/80 pt-2">
+                    <span className="text-stone-400">Items Subtotal</span>
+                    <span className="font-medium text-stone-200">₹{confirmedOrder.subtotal}</span>
+                  </div>
+                )}
+                {confirmedOrder.discount > 0 && (
+                  <div className="flex justify-between font-bold text-emerald-400">
+                    <span>Discount ({confirmedOrder.couponCode || 'Coupon'})</span>
+                    <span>-₹{confirmedOrder.discount}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-stone-400">
+                  <span>Delivery Fee</span>
+                  <span>{confirmedOrder.deliveryFee === 0 ? 'FREE' : `₹${confirmedOrder.deliveryFee}`}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-stone-800/80 text-sm font-black text-white">
                   <span>Grand Total</span>
@@ -793,11 +849,113 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              {/* Order Total & Submit Action */}
-              <div className="pt-3 border-t border-stone-800 space-y-3">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-stone-400">Total Bill Amount ({cart.length} items):</span>
-                  <span className="text-lg font-black text-amber-400 font-mono">₹{grandTotal}</span>
+              {/* Coupon / Promo Code in Checkout */}
+              <div className="pt-2 border-t border-stone-800">
+                {appliedCoupon ? (
+                  <div className="p-3 rounded-xl bg-gradient-to-r from-emerald-950/70 to-stone-900 border border-emerald-500/40 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-black text-xs text-emerald-400 tracking-wider">
+                            {appliedCoupon.code}
+                          </span>
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded font-bold">
+                            Applied
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-300/80 font-medium">
+                          You save ₹{discountAmount} on this order!
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleRemovePromo}
+                      className="text-stone-400 hover:text-rose-400 p-1.5 rounded-lg hover:bg-stone-800 transition text-xs font-bold cursor-pointer"
+                      title="Remove Coupon"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-stone-300">
+                      <span className="flex items-center gap-1.5">
+                        <Ticket className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Have a Promo Code?</span>
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Tag className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-stone-500" />
+                        <input
+                          type="text"
+                          placeholder="e.g. WELCOME50"
+                          value={promoCodeInput}
+                          onChange={(e) => {
+                            setPromoCodeInput(e.target.value.toUpperCase().replace(/\s/g, ''));
+                            if (promoError) setPromoError('');
+                          }}
+                          className="w-full bg-stone-950 border border-stone-800 rounded-xl pl-8 pr-3 py-2 text-xs font-mono font-bold text-white placeholder-stone-500 uppercase focus:outline-none focus:border-amber-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPromo()}
+                        disabled={!promoCodeInput.trim()}
+                        className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-40 disabled:pointer-events-none text-stone-950 text-xs font-black rounded-xl transition cursor-pointer"
+                      >
+                        APPLY
+                      </button>
+                    </div>
+
+                    {promoError && (
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-400 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                        <span>{promoError}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Order Bill Breakdown & Submit Action */}
+              <div className="pt-3 border-t border-stone-800 space-y-2.5">
+                <div className="space-y-1.5 text-xs text-stone-400">
+                  <div className="flex justify-between">
+                    <span>Items Subtotal:</span>
+                    <span className="text-stone-200 font-medium">₹{subtotal}</span>
+                  </div>
+
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Coupon Discount ({appliedCoupon?.code}):</span>
+                      </span>
+                      <span>-₹{discountAmount}</span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between">
+                    <span>Delivery Fee:</span>
+                    <span>
+                      {deliveryFee === 0 ? (
+                        <span className="text-emerald-400 font-semibold">FREE</span>
+                      ) : (
+                        `₹${deliveryFee}`
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs pt-2 border-t border-stone-800 font-bold text-white">
+                    <span>Total Bill Amount ({cart.length} items):</span>
+                    <span className="text-lg font-black text-amber-400 font-mono">₹{grandTotal}</span>
+                  </div>
                 </div>
 
                 <Button

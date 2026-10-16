@@ -49,14 +49,6 @@ export const Navbar = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: 'Menu', path: '/menu' },
-    { name: 'About', path: '/about' },
-    { name: 'Gallery', path: '/gallery' },
-    { name: 'Contact', path: '/contact' },
-  ];
-
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchTerm.trim()) {
@@ -77,10 +69,10 @@ export const Navbar = () => {
       }`}
     >
       {/* Full width navbar directly on top of video */}
-      <div className="w-full px-5 sm:px-10 lg:px-16 flex items-center justify-between">
+      <div className="w-full px-5 sm:px-10 lg:px-16 flex items-center justify-between gap-4">
         
         {/* Brand / Logo - AGF CAFE */}
-        <NavLink to="/" className="flex flex-col group text-left select-none">
+        <NavLink to="/" className="flex flex-col group text-left select-none shrink-0">
           <div className="flex items-center gap-1.5">
             <span className="text-xl sm:text-2xl font-black text-amber-500 group-hover:-translate-x-0.5 transition-transform font-serif">
               &lt;
@@ -98,36 +90,54 @@ export const Navbar = () => {
           </span>
         </NavLink>
 
-        {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8 lg:gap-10">
-          {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
-            return (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                className={({ isActive: isLinkActive }) =>
-                  `relative py-1 text-sm font-semibold transition-all duration-200 ${
-                    isLightNavbar
-                      ? isLinkActive ? 'text-amber-600 font-bold' : 'text-stone-700 hover:text-amber-600'
-                      : isLinkActive ? 'text-amber-400 font-bold' : 'text-stone-100 hover:text-amber-300'
-                  }`
-                }
+        {/* Large Prominent Center Search Bar (Desktop & Tablet) */}
+        <div className="hidden md:flex flex-1 max-w-xl mx-4 lg:mx-10">
+          <form
+            onSubmit={handleSearchSubmit}
+            className={`w-full relative flex items-center rounded-full transition-all duration-300 shadow-sm border ${
+              isLightNavbar
+                ? 'bg-stone-100/90 hover:bg-stone-100 focus-within:bg-white focus-within:ring-2 focus-within:ring-amber-500/30 focus-within:border-amber-500 border-stone-200'
+                : 'bg-stone-900/80 hover:bg-stone-900 focus-within:bg-stone-950 focus-within:ring-2 focus-within:ring-amber-400/30 focus-within:border-amber-400/80 border-white/15 backdrop-blur-md'
+            }`}
+          >
+            <div className="pl-4 pr-2 text-stone-400 flex items-center pointer-events-none">
+              <Search className="w-5 h-5 text-amber-500" />
+            </div>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search delicious food, pizza, burgers, shakes..."
+              className={`w-full py-2.5 sm:py-3 pr-28 text-sm bg-transparent outline-none font-medium transition-colors ${
+                isLightNavbar
+                  ? 'text-stone-900 placeholder:text-stone-400'
+                  : 'text-white placeholder:text-stone-400'
+              }`}
+            />
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={() => setSearchTerm('')}
+                className="p-1 mr-1 text-stone-400 hover:text-stone-600 transition cursor-pointer"
+                aria-label="Clear search"
               >
-                {link.name}
-                {isActive && (
-                  <span className="absolute -bottom-1.5 left-0 right-0 h-0.5 bg-amber-500 rounded-full shadow-sm" />
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <button
+              type="submit"
+              className="absolute right-1.5 px-4 sm:px-5 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-stone-950 text-xs font-bold rounded-full transition-all shadow-sm hover:shadow cursor-pointer flex items-center gap-1.5 active:scale-95"
+            >
+              <span>Search</span>
+            </button>
+          </form>
+        </div>
 
         {/* Right Actions: Search, Cart, Order Now Button */}
-        <div className="flex items-center gap-3 sm:gap-4">
+        <div className="flex items-center gap-3 sm:gap-4 shrink-0">
           
-          {/* Search Trigger */}
-          <div className="relative">
+          {/* Mobile Search Trigger (< md) */}
+          <div className="relative md:hidden">
             <button
               onClick={() => setIsSearchOpen(!isSearchOpen)}
               className={`p-2 rounded-full border transition cursor-pointer shadow-sm ${
@@ -137,35 +147,36 @@ export const Navbar = () => {
               }`}
               aria-label="Search"
             >
-              <Search className="w-5 h-5" />
+              <Search className="w-5 h-5 text-amber-500" />
             </button>
 
             {isSearchOpen && (
               <form
                 onSubmit={handleSearchSubmit}
-                className={`absolute right-0 top-12 w-64 rounded-2xl p-2 shadow-xl flex items-center gap-2 z-50 animate-fadeIn border ${
+                className={`fixed left-4 right-4 top-20 p-2.5 rounded-2xl shadow-2xl flex items-center gap-2 z-50 animate-fadeIn border ${
                   isLightNavbar
                     ? 'bg-white border-stone-200'
                     : 'bg-stone-900/95 backdrop-blur-md border-stone-700'
                 }`}
               >
+                <Search className="w-4 h-4 text-amber-500 ml-2 shrink-0" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search pizza, burger..."
+                  placeholder="Search pizza, burger, shakes..."
                   autoFocus
-                  className={`w-full border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-amber-500 ${
+                  className={`w-full border-none px-2 py-1.5 text-xs focus:outline-none ${
                     isLightNavbar
-                      ? 'bg-stone-50 border-stone-200 text-stone-900 placeholder:text-stone-400'
-                      : 'bg-stone-950 border-stone-800 text-white placeholder:text-stone-500'
+                      ? 'bg-transparent text-stone-900 placeholder:text-stone-400'
+                      : 'bg-transparent text-white placeholder:text-stone-500'
                   }`}
                 />
                 <button
                   type="submit"
-                  className="bg-amber-500 text-stone-950 px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer"
+                  className="bg-amber-500 text-stone-950 px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 cursor-pointer"
                 >
-                  Go
+                  Search
                 </button>
               </form>
             )}
@@ -355,28 +366,35 @@ export const Navbar = () => {
             ? 'bg-white/98 backdrop-blur-xl border-stone-200 shadow-lg'
             : 'bg-stone-950/95 backdrop-blur-xl border-stone-800'
         }`}>
-          <nav className="flex flex-col space-y-3">
-            {navLinks.map((link) => (
-              <NavLink
-                key={link.name}
-                to={link.path}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) =>
-                  `text-base font-semibold py-2 px-3 rounded-xl transition ${
-                    isLightNavbar
-                      ? isActive
-                        ? 'bg-amber-50 text-amber-600 font-bold border border-amber-200'
-                        : 'text-stone-700 hover:text-stone-950 hover:bg-stone-100'
-                      : isActive
-                        ? 'bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30'
-                        : 'text-stone-200 hover:text-white hover:bg-white/10'
-                  }`
-                }
+          {/* Mobile Drawer Search Bar */}
+          <form
+            onSubmit={(e) => {
+              handleSearchSubmit(e);
+              setIsMobileMenuOpen(false);
+            }}
+            className="relative"
+          >
+            <div className="relative flex items-center">
+              <Search className="w-4 h-4 text-amber-500 absolute left-3.5 pointer-events-none" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search dishes, burgers, pizza..."
+                className={`w-full pl-10 pr-24 py-2.5 rounded-xl border text-sm outline-none ${
+                  isLightNavbar
+                    ? 'bg-stone-100 border-stone-200 text-stone-900 placeholder:text-stone-400 focus:border-amber-500'
+                    : 'bg-stone-900 border-stone-800 text-white placeholder:text-stone-500 focus:border-amber-400'
+                }`}
+              />
+              <button
+                type="submit"
+                className="absolute right-1.5 px-3.5 py-1.5 bg-amber-500 text-stone-950 text-xs font-bold rounded-lg cursor-pointer"
               >
-                {link.name}
-              </NavLink>
-            ))}
-          </nav>
+                Search
+              </button>
+            </div>
+          </form>
           
           {/* Mobile Auth Section */}
           <div className={`pt-3 border-t ${isLightNavbar ? 'border-stone-200' : 'border-stone-800'}`}>

@@ -21,6 +21,12 @@ export const MAIN_NAV_ITEMS = [
     path: '/products',
   },
   {
+    id: 'coupons',
+    label: 'Coupons & Offers',
+    icon: 'Ticket',
+    path: '/coupons',
+  },
+  {
     id: 'customers',
     label: 'Customers',
     icon: 'Users',
