@@ -12,6 +12,22 @@ export const MenuItemCard = ({ item }) => {
 
   const isOutOfStock = item.inStock === false;
 
+  const isCustomizable =
+    item.customizationEnabled !== false &&
+    (item.customizationEnabled === true ||
+      (Array.isArray(item.customizations) && item.customizations.length > 0) ||
+      ['Pizza', 'Burger'].includes(item.category));
+
+  const handleAddToCartClick = () => {
+    if (isOutOfStock) return;
+    if (isCustomizable) {
+      setIsCustomizing(true);
+    } else {
+      addToCart(item, 1);
+      if (showToast) showToast(`Added "${item.name}" to cart! 🛒`);
+    }
+  };
+
   // Real-time cart check across any customizations of this item
   const quantityInCart = getItemTotalQuantity ? getItemTotalQuantity(item.id) : (cart?.filter((ci) => String(ci.id) === String(item.id)).reduce((s, i) => s + i.quantity, 0) || 0);
 
@@ -216,9 +232,9 @@ export const MenuItemCard = ({ item }) => {
               <div>
                 <button
                   type="button"
-                  onClick={() => !isOutOfStock && setIsCustomizing(true)}
+                  onClick={handleAddToCartClick}
                   disabled={isOutOfStock}
-                  className={`w-full flex items-center justify-between py-2.5 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer active:scale-[0.98] ${
+                  className={`w-full flex items-center ${isCustomizable ? 'justify-between' : 'justify-center'} py-2.5 px-4 rounded-2xl font-bold text-xs sm:text-sm transition-all duration-200 cursor-pointer active:scale-[0.98] ${
                     isOutOfStock
                       ? 'bg-stone-200 text-stone-500 cursor-not-allowed shadow-none'
                       : 'bg-amber-400 hover:bg-amber-500 active:bg-amber-600 text-stone-950 shadow-sm'
@@ -228,13 +244,13 @@ export const MenuItemCard = ({ item }) => {
                     <ShoppingCart className="w-4 h-4 stroke-[2.2]" />
                     <span>{isOutOfStock ? 'Sold Out' : 'Add to Cart'}</span>
                   </div>
-                  {!isOutOfStock && (
+                  {!isOutOfStock && isCustomizable && (
                     <span className="text-[10px] font-black uppercase tracking-wider bg-black/10 px-2 py-0.5 rounded-md">
                       Customise +
                     </span>
                   )}
                 </button>
-                {!isOutOfStock && (
+                {!isOutOfStock && isCustomizable && (
                   <p className="text-[10px] text-stone-400 text-center font-medium mt-1">
                     Customisable toppings & cooking notes
                   </p>

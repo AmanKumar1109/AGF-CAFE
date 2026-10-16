@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Image as ImageIcon, Sparkles, AlertCircle, Check } from 'lucide-react';
+import { CustomizationEditor, CUSTOMIZATION_PRESETS } from './CustomizationEditor';
 
 const CATEGORY_OPTIONS = [
   'Pizza',
@@ -37,6 +38,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, itemToEdit = null }) => 
     calories: '450 kcal',
     prepTime: '15 min',
     rating: 4.8,
+    customizationEnabled: true,
+    customizations: CUSTOMIZATION_PRESETS.pizza.customizations,
+    allowInstructions: true,
   });
 
   const [error, setError] = useState('');
@@ -57,6 +61,17 @@ export const ProductModal = ({ isOpen, onClose, onSave, itemToEdit = null }) => 
         calories: itemToEdit.calories || '450 kcal',
         prepTime: itemToEdit.prepTime || '15 min',
         rating: itemToEdit.rating || 4.8,
+        customizationEnabled:
+          itemToEdit.customizationEnabled !== undefined
+            ? Boolean(itemToEdit.customizationEnabled)
+            : Boolean(itemToEdit.customizations?.length > 0 || ['Pizza', 'Burger'].includes(itemToEdit.category)),
+        customizations: Array.isArray(itemToEdit.customizations) && itemToEdit.customizations.length > 0
+          ? itemToEdit.customizations
+          : (CUSTOMIZATION_PRESETS[itemToEdit.category?.toLowerCase()]?.customizations || []),
+        allowInstructions:
+          itemToEdit.allowInstructions !== undefined
+            ? Boolean(itemToEdit.allowInstructions)
+            : true,
       });
     } else {
       setFormData({
@@ -72,6 +87,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, itemToEdit = null }) => 
         calories: '450 kcal',
         prepTime: '15 min',
         rating: 4.8,
+        customizationEnabled: true,
+        customizations: CUSTOMIZATION_PRESETS.pizza.customizations,
+        allowInstructions: true,
       });
     }
     setError('');
@@ -102,6 +120,9 @@ export const ProductModal = ({ isOpen, onClose, onSave, itemToEdit = null }) => 
         price: Number(formData.price),
         rating: Number(formData.rating) || 4.8,
         badge: formData.badge.trim() || null,
+        customizationEnabled: Boolean(formData.customizationEnabled),
+        customizations: formData.customizationEnabled ? (formData.customizations || []) : [],
+        allowInstructions: Boolean(formData.allowInstructions),
       });
       onClose();
     } catch (err) {
@@ -355,6 +376,22 @@ export const ProductModal = ({ isOpen, onClose, onSave, itemToEdit = null }) => 
               <span className="text-xs font-semibold text-emerald-700">100% Pure Vegetarian</span>
             </label>
           </div>
+
+          {/* Customization & Add-ons Configuration Section (Zomato/Swiggy Style) */}
+          <CustomizationEditor
+            customizationEnabled={formData.customizationEnabled}
+            onToggleEnabled={(enabled) =>
+              setFormData((prev) => ({ ...prev, customizationEnabled: enabled }))
+            }
+            customizations={formData.customizations || []}
+            onChangeCustomizations={(customs) =>
+              setFormData((prev) => ({ ...prev, customizations: customs }))
+            }
+            allowInstructions={formData.allowInstructions}
+            onToggleInstructions={(allowed) =>
+              setFormData((prev) => ({ ...prev, allowInstructions: allowed }))
+            }
+          />
 
           {/* Footer Actions */}
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">

@@ -615,7 +615,14 @@ export const ProductsManager = () => {
                 {/* Content */}
                 <div className="p-4">
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-semibold mb-1">
-                    <span>{item.category || 'General'}</span>
+                    <div className="flex items-center gap-1.5">
+                      <span>{item.category || 'General'}</span>
+                      {(item.customizationEnabled || item.customizations?.length > 0) && (
+                        <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-amber-100 text-amber-800">
+                          ✨ Customizable
+                        </span>
+                      )}
+                    </div>
                     <span>{item.prepTime || '15 min'}</span>
                   </div>
 
