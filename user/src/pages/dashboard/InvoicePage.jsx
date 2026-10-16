@@ -190,9 +190,19 @@ export const InvoicePage = () => {
                 const price = parseFloat(item.price || 0);
                 const amt = price * qty;
                 return (
-                  <tr key={idx} className="align-top">
+                  <tr key={idx} className="align-top border-b border-stone-200/40">
                     <td className="py-1 pr-1 font-medium">
-                      {idx + 1}. {item.name}
+                      <div>{idx + 1}. {item.name}</div>
+                      {item.selectedAddOns?.length > 0 && (
+                        <div className="text-[9px] text-stone-600 pl-2">
+                          + {item.selectedAddOns.map(a => a.name).join(', ')}
+                        </div>
+                      )}
+                      {item.specialInstructions && (
+                        <div className="text-[9px] italic text-stone-600 pl-2">
+                          Note: "{item.specialInstructions}"
+                        </div>
+                      )}
                     </td>
                     <td className="py-1 text-center font-medium">{qty}</td>
                     <td className="py-1 text-right pr-1 font-medium">{price.toFixed(2)}</td>

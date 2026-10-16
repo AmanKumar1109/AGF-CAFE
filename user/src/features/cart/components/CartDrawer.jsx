@@ -81,7 +81,7 @@ export const CartDrawer = () => {
             </div>
           ) : (
             cart.map((item) => (
-              <CartItem key={item.id} item={item} />
+              <CartItem key={item.cartItemId || item.id} item={item} />
             ))
           )}
         </div>

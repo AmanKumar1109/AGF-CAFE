@@ -30,40 +30,76 @@ export const CartProvider = ({ children }) => {
     }, 3000);
   };
 
+  const getCartItemId = (item) => {
+    if (item.cartItemId) return item.cartItemId;
+    const addOnsPart = (item.selectedAddOns || [])
+      .map((a) => `${a.name}:${a.price || 0}`)
+      .sort()
+      .join('|');
+    const notePart = (item.specialInstructions || '').trim().toLowerCase();
+    if (!addOnsPart && !notePart) {
+      return String(item.id);
+    }
+    return `${item.id}_${addOnsPart}_${notePart}`;
+  };
+
   const addToCart = (item, quantityToAdd = 1) => {
     const qty = parseInt(quantityToAdd, 10) || 1;
+    const key = getCartItemId(item);
+    const itemWithKey = {
+      ...item,
+      cartItemId: key,
+      basePrice: item.basePrice || item.price,
+    };
+
     setCart((prevCart) => {
-      const existingItem = prevCart.find((cartItem) => cartItem.id === item.id);
+      const existingItem = prevCart.find(
+        (cartItem) => (cartItem.cartItemId || String(cartItem.id)) === key
+      );
       if (existingItem) {
         return prevCart.map((cartItem) =>
-          cartItem.id === item.id
+          (cartItem.cartItemId || String(cartItem.id)) === key
             ? { ...cartItem, quantity: cartItem.quantity + qty }
             : cartItem
         );
       }
-      return [...prevCart, { ...item, quantity: qty }];
+      return [...prevCart, { ...itemWithKey, quantity: qty }];
     });
     showToast(`Added ${item.name} to cart!`);
   };
 
-  const removeFromCart = (id) => {
-    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  const removeFromCart = (identifier) => {
+    setCart((prevCart) =>
+      prevCart.filter(
+        (item) =>
+          item.cartItemId !== identifier &&
+          String(item.id) !== String(identifier)
+      )
+    );
   };
 
-  const updateQuantity = (id, newQuantity) => {
+  const updateQuantity = (identifier, newQuantity) => {
     if (newQuantity <= 0) {
-      removeFromCart(id);
+      removeFromCart(identifier);
       return;
     }
     setCart((prevCart) =>
       prevCart.map((item) =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
+        item.cartItemId === identifier || String(item.id) === String(identifier)
+          ? { ...item, quantity: newQuantity }
+          : item
       )
     );
   };
 
   const clearCart = () => {
     setCart([]);
+  };
+
+  const getItemTotalQuantity = (itemId) => {
+    return cart
+      .filter((item) => String(item.id) === String(itemId))
+      .reduce((sum, item) => sum + item.quantity, 0);
   };
 
   const totalCount = cart.reduce((total, item) => total + item.quantity, 0);
@@ -81,6 +117,7 @@ export const CartProvider = ({ children }) => {
         removeFromCart,
         updateQuantity,
         clearCart,
+        getItemTotalQuantity,
         totalCount,
         subtotal,
         deliveryFee,

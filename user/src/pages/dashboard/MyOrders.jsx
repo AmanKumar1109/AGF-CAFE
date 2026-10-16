@@ -364,6 +364,20 @@ export const MyOrders = () => {
                     <p className="text-xs font-bold text-stone-500 mt-1">
                       {itemCount} Items • {order.paymentMethod || 'Online'} Payment
                     </p>
+                    {order.items?.some(i => i.selectedAddOns?.length > 0 || i.specialInstructions) && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {order.items.flatMap(i => (i.selectedAddOns || []).map(a => a.name)).slice(0, 3).map((addonName, aIdx) => (
+                          <span key={aIdx} className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 px-1.5 py-0.5 rounded">
+                            + {addonName}
+                          </span>
+                        ))}
+                        {order.items.some(i => i.specialInstructions) && (
+                          <span className="text-[10px] font-bold bg-stone-100 text-stone-700 border border-stone-200 px-1.5 py-0.5 rounded italic">
+                            Custom Notes
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 

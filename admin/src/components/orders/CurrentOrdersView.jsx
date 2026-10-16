@@ -233,18 +233,34 @@ export const CurrentOrdersView = () => {
                   {/* Items List */}
                   <div className="p-5 space-y-2 max-h-48 overflow-y-auto">
                     {items.map((item, idx) => (
-                      <div key={idx} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 min-w-0 pr-2">
-                          <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-800 flex items-center justify-center font-bold text-[10px] shrink-0">
-                            {item.quantity || 1}x
-                          </span>
-                          <span className="font-semibold text-slate-800 truncate">
-                            {item.name}
+                      <div key={idx} className="space-y-1 py-1 border-b border-slate-50 last:border-none">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2 min-w-0 pr-2">
+                            <span className="w-5 h-5 rounded-md bg-slate-100 text-slate-800 flex items-center justify-center font-bold text-[10px] shrink-0">
+                              {item.quantity || 1}x
+                            </span>
+                            <span className="font-bold text-slate-800 truncate">
+                              {item.name}
+                            </span>
+                          </div>
+                          <span className="font-mono text-slate-600 shrink-0 font-semibold">
+                            ₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}
                           </span>
                         </div>
-                        <span className="font-mono text-slate-600 shrink-0">
-                          ₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}
-                        </span>
+                        {item.selectedAddOns?.length > 0 && (
+                          <div className="pl-7 flex flex-wrap gap-1">
+                            {item.selectedAddOns.map((addon, aIdx) => (
+                              <span key={aIdx} className="text-[10px] bg-amber-50 text-amber-800 border border-amber-200/80 px-1.5 py-0.5 rounded font-medium">
+                                + {addon.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {item.specialInstructions && (
+                          <div className="pl-7 text-[10px] text-amber-900 bg-amber-50/70 p-1 rounded border border-amber-200/60 font-medium italic">
+                            Chef Note: "{item.specialInstructions}"
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

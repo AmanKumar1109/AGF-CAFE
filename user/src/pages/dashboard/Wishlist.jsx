@@ -1,13 +1,15 @@
-import React, { useRef, useEffect } from 'react';
-import { Heart, ShoppingBag, Plus, Minus, UtensilsCrossed } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { Heart, ShoppingBag, Plus, Minus, UtensilsCrossed, Sparkles } from 'lucide-react';
 import { EmptyState } from '../../components/dashboard/EmptyState';
 import gsap from 'gsap';
 import { useAuth } from '../../context/useAuth';
 import { useCart } from '../../context/useCart';
+import { ItemCustomizationModal } from '../../features/menu';
 
 export const Wishlist = () => {
   const { userProfile, toggleWishlist } = useAuth();
-  const { addToCart, cart, updateQuantity, setIsCartOpen } = useCart();
+  const { addToCart, cart, updateQuantity, getItemTotalQuantity, setIsCartOpen } = useCart();
+  const [customizingDish, setCustomizingDish] = useState(null);
   
   const wishlist = userProfile?.wishlist || [];
   const containerRef = useRef(null);
@@ -43,8 +45,7 @@ export const Wishlist = () => {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6">
           {wishlist.map(item => {
             const dish = typeof item === 'object' ? item : { id: item, name: 'Cafe Special', price: 149 };
-            const cartItem = cart.find(ci => ci.id === dish.id);
-            const quantityInCart = cartItem ? cartItem.quantity : 0;
+            const quantityInCart = getItemTotalQuantity ? getItemTotalQuantity(dish.id) : (cart.filter(ci => String(ci.id) === String(dish.id)).reduce((s, i) => s + i.quantity, 0) || 0);
             const dishImage = dish.image || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=400';
 
             return (
@@ -92,37 +93,47 @@ export const Wishlist = () => {
 
                 <div>
                   {quantityInCart > 0 ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 flex items-center justify-between bg-amber-400 text-stone-950 p-1 sm:p-1.5 rounded-2xl shadow-sm">
-                        <button
-                          onClick={() => updateQuantity(dish.id, quantityInCart - 1)}
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-black/10 hover:bg-black/20 text-stone-950 flex items-center justify-center font-black transition-colors cursor-pointer"
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 flex items-center justify-between bg-amber-400 text-stone-950 p-1 sm:p-1.5 rounded-2xl shadow-sm">
+                          <button
+                            onClick={() => updateQuantity(dish.id, quantityInCart - 1)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-black/10 hover:bg-black/20 text-stone-950 flex items-center justify-center font-black transition-colors cursor-pointer"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-black text-xs sm:text-sm px-2 font-mono">{quantityInCart}</span>
+                          <button
+                            onClick={() => setCustomizingDish(dish)}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-black/10 hover:bg-black/20 text-stone-950 flex items-center justify-center font-black transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <button 
+                          onClick={() => setIsCartOpen(true)}
+                          className="w-9 h-9 sm:w-11 sm:h-11 bg-stone-100 text-stone-800 flex items-center justify-center rounded-2xl shadow-sm cursor-pointer hover:bg-stone-200 transition-all border border-stone-200"
+                          title="View Cart"
                         >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-black text-xs sm:text-sm px-2 font-mono">{quantityInCart}</span>
-                        <button
-                          onClick={() => updateQuantity(dish.id, quantityInCart + 1)}
-                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-black/10 hover:bg-black/20 text-stone-950 flex items-center justify-center font-black transition-colors cursor-pointer"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
+                          <ShoppingBag className="w-4 h-4 text-amber-600" />
                         </button>
                       </div>
-                      <button 
-                        onClick={() => setIsCartOpen(true)}
-                        className="w-9 h-9 sm:w-11 sm:h-11 bg-stone-100 text-stone-800 flex items-center justify-center rounded-2xl shadow-sm cursor-pointer hover:bg-stone-200 transition-all border border-stone-200"
-                        title="View Cart"
+
+                      <button
+                        type="button"
+                        onClick={() => setCustomizingDish(dish)}
+                        className="text-[11px] font-bold text-amber-800 hover:underline block text-left"
                       >
-                        <ShoppingBag className="w-4 h-4 text-amber-600" />
+                        Customise ▾
                       </button>
                     </div>
                   ) : (
                     <button 
-                      onClick={() => addToCart(dish, 1)}
+                      onClick={() => setCustomizingDish(dish)}
                       className="w-full py-2.5 sm:py-3.5 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black text-[11px] sm:text-xs uppercase tracking-wider rounded-2xl flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
                     >
                       <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>Add to Cart</span>
+                      <span>Add & Customise</span>
                     </button>
                   )}
                 </div>
@@ -139,6 +150,13 @@ export const Wishlist = () => {
           actionLink="/menu"
         />
       )}
+
+      {/* Customization Modal */}
+      <ItemCustomizationModal
+        item={customizingDish}
+        isOpen={Boolean(customizingDish)}
+        onClose={() => setCustomizingDish(null)}
+      />
     </div>
   );
 };

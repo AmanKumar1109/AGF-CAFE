@@ -194,8 +194,20 @@ export const ThermalReceiptModal = ({ order, onClose }) => {
                   const price = parseFloat(item.price || 0);
                   const amt = price * qty;
                   return (
-                    <tr key={idx} className="align-top">
-                      <td className="py-1 pr-1">{idx + 1}. {item.name}</td>
+                    <tr key={idx} className="align-top border-b border-black/10">
+                      <td className="py-1 pr-1">
+                        <div>{idx + 1}. {item.name}</div>
+                        {item.selectedAddOns?.length > 0 && (
+                          <div className="text-[9px] text-slate-600 pl-2">
+                            + {item.selectedAddOns.map(a => a.name).join(', ')}
+                          </div>
+                        )}
+                        {item.specialInstructions && (
+                          <div className="text-[9px] italic text-slate-800 pl-2 font-bold">
+                            Note: "{item.specialInstructions}"
+                          </div>
+                        )}
+                      </td>
                       <td className="py-1 text-center">{qty}</td>
                       <td className="py-1 text-right pr-1">{price.toFixed(2)}</td>
                       <td className="py-1 text-right">{amt.toFixed(2)}</td>

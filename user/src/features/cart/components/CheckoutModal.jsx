@@ -762,6 +762,37 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
+              {/* Order Summary & Customizations Review */}
+              <div className="space-y-2 pt-2 border-t border-stone-800">
+                <label className="block text-xs font-bold text-stone-300">
+                  Order Summary ({cart.length} item{cart.length === 1 ? '' : 's'})
+                </label>
+                <div className="max-h-40 overflow-y-auto space-y-2 pr-1">
+                  {cart.map((ci, idx) => (
+                    <div key={idx} className="p-2.5 rounded-xl bg-stone-950 border border-stone-800/80 text-xs text-left">
+                      <div className="flex items-center justify-between font-bold text-stone-200">
+                        <span className="truncate">{ci.name} × {ci.quantity}</span>
+                        <span className="font-mono text-amber-400">₹{ci.price * ci.quantity}</span>
+                      </div>
+                      {ci.selectedAddOns?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {ci.selectedAddOns.map((addon, aIdx) => (
+                            <span key={aIdx} className="text-[10px] bg-stone-900 border border-stone-800 text-stone-400 px-1.5 py-0.5 rounded">
+                              + {addon.name} {addon.price > 0 && `(₹${addon.price})`}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {ci.specialInstructions && (
+                        <p className="text-[10px] text-amber-400/90 italic mt-1 bg-stone-900/60 p-1 rounded border border-stone-800/60">
+                          Note: "{ci.specialInstructions}"
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {/* Order Total & Submit Action */}
               <div className="pt-3 border-t border-stone-800 space-y-3">
                 <div className="flex justify-between items-center text-xs">
