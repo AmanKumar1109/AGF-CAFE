@@ -22,6 +22,7 @@ import { MyComplaints } from '../pages/dashboard/MyComplaints';
 import { Profile } from '../pages/dashboard/Profile';
 import { HelpSupport } from '../pages/dashboard/HelpSupport';
 import { RiderDashboardPage } from '../pages/delivery/RiderDashboard';
+import { DineInPage } from '../pages/dinein/DineInPage';
 import { useAuth } from '../context/useAuth';
 import { User } from 'lucide-react';
 
@@ -65,6 +66,10 @@ export const AppRoutes = () => {
       {/* Standalone Dedicated Delivery Boy Panel Routes */}
       <Route path="/rider" element={<RiderDashboardPage />} />
       <Route path="/delivery" element={<RiderDashboardPage />} />
+
+      {/* Standalone Table Dine-In QR Routing */}
+      <Route path="/table/:tableId" element={<DineInPage />} />
+      <Route path="/dine-in" element={<DineInPage />} />
 
       {/* Public Pages inside RootLayout */}
       <Route path="/" element={<RootLayout />}>

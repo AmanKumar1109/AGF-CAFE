@@ -207,7 +207,10 @@ export const AdminOrdersProvider = ({ children }) => {
     let isInitialLoad = true;
 
     const unsub = onSnapshot(collection(db, 'orders'), (snap) => {
-      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Filter out offline/dine-in orders to keep Cafe Orders strictly for online delivery
+      const loaded = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(o => o.orderType !== 'dine-in' && o.source !== 'qr_table' && o.source !== 'counter_pos');
       loaded.sort((a, b) => getTimeMs(b.createdAt || b.updatedAt) - getTimeMs(a.createdAt || a.updatedAt));
 
       if (!isInitialLoad) {

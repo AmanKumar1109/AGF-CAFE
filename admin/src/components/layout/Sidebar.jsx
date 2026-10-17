@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Bike,
   Radio,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { 
   NAV_CATEGORIES, 
@@ -34,6 +35,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
   const [activeCouponsCount, setActiveCouponsCount] = useState(0);
   const [pendingReferralsCount, setPendingReferralsCount] = useState(0);
   const [availableStaffCount, setAvailableStaffCount] = useState(0);
+  const [activeDineInCount, setActiveDineInCount] = useState(0);
 
   // Content Management dropdown open/close state
   const isCurrentTabContent = CONTENT_NAV_ITEMS.some((i) => i.id === activeTab) || activeTab === 'content';
@@ -74,12 +76,22 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
         setAvailableStaffCount(avail);
       }, (err) => console.warn('Sidebar staff count error:', err));
 
+      const qDine = collection(db, 'offline_orders');
+      const unsubDine = onSnapshot(qDine, (snap) => {
+        const active = snap.docs.filter((d) => {
+          const s = d.data().status;
+          return s !== 'Completed' && s !== 'Cancelled' && s !== 'Delivered';
+        }).length;
+        setActiveDineInCount(active);
+      }, (err) => console.warn('Sidebar dine-in count error:', err));
+
       return () => {
         unsubRev();
         unsubComp();
         unsubCoup();
         unsubRef();
         unsubStaff();
+        unsubDine();
       };
     } catch (e) {
       console.warn('Sidebar listener setup error:', e);
@@ -93,6 +105,8 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
         return <LayoutDashboard className={className} />;
       case 'ClipboardList':
         return <ClipboardList className={className} />;
+      case 'UtensilsCrossed':
+        return <UtensilsCrossed className={className} />;
       case 'Package':
         return <Package className={className} />;
       case 'Bike':
@@ -127,6 +141,20 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
   // Helper for dynamic notification badges
   const renderItemBadge = (itemId) => {
     if (isCollapsed) return null;
+
+    if (itemId === 'offline-tables') {
+      return (
+        <span
+          className={`text-[11px] font-black px-2 py-0.5 rounded-full ${
+            activeDineInCount > 0
+              ? 'bg-amber-400 text-stone-950 shadow-sm animate-pulse font-mono'
+              : 'bg-slate-100 text-slate-500'
+          }`}
+        >
+          {activeDineInCount > 0 ? `${activeDineInCount} active` : '0'}
+        </span>
+      );
+    }
 
     if (itemId === 'orders') {
       const count = activeOrders?.length || 0;

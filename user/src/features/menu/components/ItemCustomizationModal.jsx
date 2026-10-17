@@ -250,25 +250,31 @@ export const ItemCustomizationModal = ({ item, isOpen, onClose }) => {
         const key = group.id || group.title;
         if (group.type === 'single') {
           const sel = selectedRadio[key];
-          if (sel && sel.price > 0) {
-            allAddOns.push({ name: sel.name, price: Number(sel.price), type: group.title });
+          if (sel && sel.name) {
+            allAddOns.push({ name: sel.name, price: Number(sel.price || 0), type: group.title });
           }
         } else {
           const list = selectedCheckboxes[key] || [];
           list.forEach(opt => {
-            allAddOns.push({ name: opt.name, price: Number(opt.price), type: group.title });
+            if (opt && opt.name) {
+              allAddOns.push({ name: opt.name, price: Number(opt.price || 0), type: group.title });
+            }
           });
         }
       });
     } else {
-      if (selectedCrust && selectedCrust.price > 0) {
-        allAddOns.push({ name: selectedCrust.name, price: selectedCrust.price, type: 'Crust/Size' });
+      if (selectedCrust && selectedCrust.name && selectedCrust.name.toLowerCase() !== 'standard') {
+        allAddOns.push({ name: selectedCrust.name, price: Number(selectedCrust.price || 0), type: 'Crust/Size' });
       }
       selectedToppings.forEach(t => {
-        allAddOns.push({ name: t.name, price: t.price, type: 'Add-on' });
+        if (t && t.name) {
+          allAddOns.push({ name: t.name, price: Number(t.price || 0), type: 'Add-on' });
+        }
       });
       selectedDips.forEach(d => {
-        allAddOns.push({ name: d.name, price: d.price, type: 'Dip/Sauce' });
+        if (d && d.name) {
+          allAddOns.push({ name: d.name, price: Number(d.price || 0), type: 'Dip/Sauce' });
+        }
       });
     }
 
@@ -280,6 +286,8 @@ export const ItemCustomizationModal = ({ item, isOpen, onClose }) => {
         ? (Object.values(selectedRadio)[0]?.name || 'Standard') 
         : (selectedCrust?.name || 'Standard'),
       selectedAddOns: allAddOns,
+      addons: allAddOns,
+      addOns: allAddOns,
       specialInstructions: specialInstructions.trim(),
     };
 

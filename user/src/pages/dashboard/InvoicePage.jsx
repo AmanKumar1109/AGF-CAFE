@@ -196,11 +196,21 @@ export const InvoicePage = () => {
                   <tr key={idx} className="align-top border-b border-stone-200/40">
                     <td className="py-1 pr-1 font-medium">
                       <div>{idx + 1}. {item.name}</div>
-                      {item.selectedAddOns?.length > 0 && (
-                        <div className="text-[9px] text-stone-600 pl-2">
-                          + {item.selectedAddOns.map(a => a.name).join(', ')}
-                        </div>
-                      )}
+                      {(() => {
+                        const raw = item.selectedAddOns || item.selectedAddons || item.addons || item.addOns || [];
+                        const names = raw.map(a => typeof a === 'string' ? a : (a.name || a.title || '')).filter(Boolean);
+                        if (item.selectedCrust && typeof item.selectedCrust === 'string' && item.selectedCrust.toLowerCase() !== 'standard') {
+                          names.unshift(item.selectedCrust);
+                        } else if (item.selectedCrust?.name && item.selectedCrust.name.toLowerCase() !== 'standard') {
+                          names.unshift(item.selectedCrust.name);
+                        }
+                        if (names.length === 0) return null;
+                        return (
+                          <div className="text-[9px] text-stone-600 pl-2">
+                            + {names.join(', ')}
+                          </div>
+                        );
+                      })()}
                       {item.specialInstructions && (
                         <div className="text-[9px] italic text-stone-600 pl-2">
                           Note: "{item.specialInstructions}"

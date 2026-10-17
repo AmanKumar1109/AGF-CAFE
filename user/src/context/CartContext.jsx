@@ -3,11 +3,13 @@ import { db } from '../firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useAuth } from './useAuth';
 import { usePricingSettings } from '../hooks/usePricingSettings';
+import { useDineIn } from './DineInContext';
 
 export const CartContext = createContext();
 
 export const CartProvider = ({ children }) => {
   const { currentUser, userProfile } = useAuth();
+  const { isDineIn, tableNumber, customerInfo } = useDineIn();
 
   // Cart state
   const [cart, setCart] = useState(() => {
@@ -318,12 +320,12 @@ export const CartProvider = ({ children }) => {
   // Delivery, Platform Fee, GST & Total Savings Calculation
   const effectiveSubtotal = Math.max(0, subtotal - discountAmount);
 
-  // 1. Delivery Partner Fee (Admin can discount from e.g. ₹40 down to ₹0)
+  // 1. Delivery Partner Fee (Admin can discount from e.g. ₹40 down to ₹0. Strictly ₹0 for Table Dine-In)
   const deliveryFeeOriginal = Number(pricingSettings.deliveryFeeOriginal ?? 40);
   const isFreeDeliveryByThreshold = subtotal > 0 && pricingSettings.freeDeliveryThreshold && subtotal >= pricingSettings.freeDeliveryThreshold;
-  const isDeliveryFeeZero = !pricingSettings.deliveryFeeEnabled || isFreeDeliveryByThreshold || pricingSettings.deliveryFee === 0;
+  const isDeliveryFeeZero = isDineIn || !pricingSettings.deliveryFeeEnabled || isFreeDeliveryByThreshold || pricingSettings.deliveryFee === 0;
   const deliveryFee = subtotal === 0 ? 0 : (isDeliveryFeeZero ? 0 : Number(pricingSettings.deliveryFee ?? 40));
-  const deliveryFeeSaved = subtotal > 0 ? Math.max(0, deliveryFeeOriginal - deliveryFee) : 0;
+  const deliveryFeeSaved = subtotal > 0 ? (isDineIn ? deliveryFeeOriginal : Math.max(0, deliveryFeeOriginal - deliveryFee)) : 0;
 
   // 2. Platform Fee (Admin can discount from e.g. ₹10 down to ₹0 or ₹5)
   const platformFeeOriginal = Number(pricingSettings.platformFeeOriginal ?? 10);

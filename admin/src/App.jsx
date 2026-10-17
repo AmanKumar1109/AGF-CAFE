@@ -15,6 +15,7 @@ import { NotificationsView } from './components/notifications/NotificationsView'
 import { StaffView } from './components/staff/StaffView';
 import { RiderDashboard } from './components/staff/RiderDashboard';
 import { SettingsView } from './components/settings/SettingsView';
+import { OfflinePosView } from './components/pos/OfflinePosView';
 import { AdminOrdersProvider } from './context/AdminOrdersContext';
 
 const FleetRadarView = lazy(() => import('./components/fleet/FleetRadarView'));
@@ -40,6 +41,8 @@ export default function App() {
           <ProductsManager />
         ) : activeTab === 'orders' ? (
           <OrdersManager />
+        ) : activeTab === 'offline-tables' ? (
+          <OfflinePosView />
         ) : activeTab === 'fleet-radar' ? (
           <Suspense fallback={<div className="p-12 text-center text-slate-500 font-bold">Loading Live Fleet Radar...</div>}>
             <FleetRadarView onSelectTab={setActiveTab} />

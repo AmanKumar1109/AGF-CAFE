@@ -17,12 +17,15 @@ import {
   Clock,
   ArrowRight,
   Ticket,
-  AlertCircle
+  AlertCircle,
+  UtensilsCrossed,
+  ChefHat
 } from 'lucide-react';
-import { collection, addDoc, updateDoc, doc, arrayUnion, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, setDoc, doc, arrayUnion, serverTimestamp, increment } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useCart } from '../../../context/useCart';
 import { useAuth } from '../../../context/useAuth';
+import { useDineIn } from '../../../context/DineInContext';
 import { Button } from '../../../components/ui/Button';
 import { sendOrderReceivedEmail } from '../../../utils/emailTemplates';
 import LocationPickerModal from '../../../components/location/LocationPickerModal';
@@ -67,6 +70,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     handleRemovePromo,
   } = useCart();
   const { currentUser, userProfile, addAddress, updateAddress, setIsAuthModalOpen } = useAuth();
+  const { isDineIn, tableNumber, customerInfo, setDineInActiveOrder, setIsOrderTrackerOpen } = useDineIn();
 
   // Address state
   const [activeAddressId, setActiveAddressId] = useState(null);
@@ -304,7 +308,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
 
-    if (!currentUser) {
+    if (!isDineIn && !currentUser) {
       if (showToast) showToast('Please sign in first to place your order! ☕');
       onClose();
       if (setIsAuthModalOpen) setIsAuthModalOpen(true);
@@ -316,144 +320,171 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     let finalCustomerPhone = '';
     let resolvedLat = null;
     let resolvedLng = null;
+    let roadDistanceKm = 0;
+    let calculatedRadiusKm = 0;
+    let calculatedETA = '15-20 mins (Kitchen Fresh)';
 
-    // If using new address form
-    if (showNewAddressForm || !hasSavedAddress) {
-      if (!addressForm.street || !addressForm.city || !addressForm.pincode) {
-        if (showToast) showToast('Please enter your street address, city, and pincode.');
-        return;
-      }
-
-      finalCustomerName = addressForm.name || userProfile?.name || currentUser?.displayName || 'Valued Customer';
-      finalCustomerPhone = addressForm.phone || userProfile?.phone || '';
-      resolvedLat = addressForm.lat ? parseFloat(addressForm.lat) : null;
-      resolvedLng = addressForm.lng ? parseFloat(addressForm.lng) : null;
-
+    if (isDineIn) {
+      // DINE-IN TABLE ORDER: Customer details from table entry modal / user profile
+      finalCustomerName = (customerInfo?.name || userProfile?.name || currentUser?.displayName || 'Dine-In Guest').trim();
+      finalCustomerPhone = (customerInfo?.phone || userProfile?.phone || '').trim();
+      resolvedLat = AGF_CAFE_HUB.lat;
+      resolvedLng = AGF_CAFE_HUB.lng;
       finalShippingAddress = {
         fullName: finalCustomerName,
         phone: finalCustomerPhone,
-        houseNo: addressForm.houseNo || '',
-        street: addressForm.street,
-        locality: addressForm.locality || '',
-        city: addressForm.city,
-        pincode: addressForm.pincode,
-        type: addressForm.type || 'Home',
+        houseNo: '',
+        street: `Table #${tableNumber || '1'}`,
+        locality: 'AGF Cafe Dine-In',
+        city: 'Baharagora',
+        pincode: '832101',
+        type: 'Dine-In Table',
         lat: resolvedLat,
         lng: resolvedLng,
-        deliveryInstructions: addressForm.deliveryInstructions || '',
-        addressLine1: [addressForm.houseNo, addressForm.street, addressForm.locality, addressForm.city, addressForm.pincode].filter(Boolean).join(', ')
+        deliveryInstructions: `Dine-In order to Table #${tableNumber || '1'}`,
+        addressLine1: `Table #${tableNumber || '1'}, AGF Cafe Dine-In`
       };
+    } else {
+      // ONLINE DOORSTEP DELIVERY: Using new address form or saved addresses
+      if (showNewAddressForm || !hasSavedAddress) {
+        if (!addressForm.street || !addressForm.city || !addressForm.pincode) {
+          if (showToast) showToast('Please enter your street address, city, and pincode.');
+          return;
+        }
 
-      // Guaranteed save to user profile in Firestore
-      if (currentUser && addAddress) {
+        finalCustomerName = addressForm.name || userProfile?.name || currentUser?.displayName || 'Valued Customer';
+        finalCustomerPhone = addressForm.phone || userProfile?.phone || '';
+        resolvedLat = addressForm.lat ? parseFloat(addressForm.lat) : null;
+        resolvedLng = addressForm.lng ? parseFloat(addressForm.lng) : null;
+
+        finalShippingAddress = {
+          fullName: finalCustomerName,
+          phone: finalCustomerPhone,
+          houseNo: addressForm.houseNo || '',
+          street: addressForm.street,
+          locality: addressForm.locality || '',
+          city: addressForm.city,
+          pincode: addressForm.pincode,
+          type: addressForm.type || 'Home',
+          lat: resolvedLat,
+          lng: resolvedLng,
+          deliveryInstructions: addressForm.deliveryInstructions || '',
+          addressLine1: [addressForm.houseNo, addressForm.street, addressForm.locality, addressForm.city, addressForm.pincode].filter(Boolean).join(', ')
+        };
+
+        // Guaranteed save to user profile in Firestore
+        if (currentUser && addAddress) {
+          try {
+            const newId = await addAddress({
+              name: finalCustomerName,
+              phone: finalCustomerPhone,
+              houseNo: addressForm.houseNo || '',
+              street: addressForm.street,
+              locality: addressForm.locality || '',
+              city: addressForm.city,
+              pincode: addressForm.pincode,
+              type: addressForm.type || 'Home',
+              lat: resolvedLat,
+              lng: resolvedLng,
+              isPrimary: addresses.length === 0,
+            });
+            if (newId) {
+              setActiveAddressId(newId);
+            }
+          } catch (err) {
+            console.warn('Could not auto-save address to profile:', err);
+          }
+        }
+      } else {
+        // Using existing saved address
+        finalCustomerName = activeAddress.name || userProfile?.name || currentUser?.displayName || 'Valued Customer';
+        finalCustomerPhone = activeAddress.phone || userProfile?.phone || '';
+        resolvedLat = activeAddress.lat ? parseFloat(activeAddress.lat) : (addressForm.lat ? parseFloat(addressForm.lat) : null);
+        resolvedLng = activeAddress.lng ? parseFloat(activeAddress.lng) : (addressForm.lng ? parseFloat(addressForm.lng) : null);
+
+        finalShippingAddress = {
+          fullName: finalCustomerName,
+          phone: finalCustomerPhone,
+          houseNo: activeAddress.houseNo || '',
+          street: activeAddress.street || activeAddress.address || '',
+          locality: activeAddress.locality || activeAddress.area || '',
+          city: activeAddress.city || 'Baharagora',
+          pincode: activeAddress.pincode || '832101',
+          type: activeAddress.type || 'Home',
+          lat: resolvedLat,
+          lng: resolvedLng,
+          deliveryInstructions: activeAddress.deliveryInstructions || addressForm.deliveryInstructions || '',
+          addressLine1: [activeAddress.houseNo, activeAddress.street || activeAddress.address, activeAddress.locality, activeAddress.city, activeAddress.pincode].filter(Boolean).join(', ')
+        };
+      }
+
+      // DYNAMIC DELIVERY RADIUS & TEXT SERVICEABILITY CHECK
+      const textServiceCheck = checkAddressTextServiceability(finalShippingAddress, deliveryRadius);
+      if (!textServiceCheck.isServiceable) {
+        if (showToast) showToast(textServiceCheck.reason);
+        return;
+      }
+
+      // Guarantee coordinates resolution from address text / landmarks if resolvedLat is null
+      if (!resolvedLat || !resolvedLng || isNaN(resolvedLat) || isNaN(resolvedLng)) {
+        const fallbackResolved = await resolveOrderCoordinates({
+          deliveryAddress: finalShippingAddress.addressLine1,
+          address: finalShippingAddress.addressLine1,
+          shippingAddress: finalShippingAddress,
+        });
+        if (fallbackResolved && fallbackResolved.lat && fallbackResolved.lng) {
+          resolvedLat = fallbackResolved.lat;
+          resolvedLng = fallbackResolved.lng;
+          finalShippingAddress.lat = resolvedLat;
+          finalShippingAddress.lng = resolvedLng;
+        }
+      }
+
+      if (resolvedLat && resolvedLng) {
+        const radiusCheck = checkDeliveryServiceable(resolvedLat, resolvedLng, AGF_CAFE_HUB, deliveryRadius);
+        if (!radiusCheck.isServiceable) {
+          if (showToast) {
+            showToast(`🚫 Delivery Unavailable: Address is ${radiusCheck.distanceKm} km away. AGF Cafe delivers strictly within ${deliveryRadius} km!`);
+          }
+          return;
+        }
+      }
+
+      // Calculate aerial straight-line radius (for delivery zone check) and true driving road distance
+      calculatedRadiusKm = resolvedLat && resolvedLng 
+        ? calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, resolvedLat, resolvedLng)
+        : (geoCheckResult?.distanceKm || 2.5);
+
+      if (resolvedLat && resolvedLng) {
         try {
-          const newId = await addAddress({
-            name: finalCustomerName,
-            phone: finalCustomerPhone,
-            houseNo: addressForm.houseNo || '',
-            street: addressForm.street,
-            locality: addressForm.locality || '',
-            city: addressForm.city,
-            pincode: addressForm.pincode,
-            type: addressForm.type || 'Home',
-            lat: resolvedLat,
-            lng: resolvedLng,
-            isPrimary: addresses.length === 0,
-          });
-          if (newId) {
-            setActiveAddressId(newId);
+          const roadRoute = await fetchRoadRoute(AGF_CAFE_HUB, { lat: resolvedLat, lng: resolvedLng });
+          if (roadRoute && roadRoute.totalDistanceKm > 0) {
+            roadDistanceKm = roadRoute.totalDistanceKm;
+            roadDurationMins = roadRoute.totalDurationMins;
+          } else {
+            roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
           }
         } catch (err) {
-          console.warn('Could not auto-save address to profile:', err);
-        }
-      }
-    } else {
-      // Using existing saved address
-      finalCustomerName = activeAddress.name || userProfile?.name || currentUser?.displayName || 'Valued Customer';
-      finalCustomerPhone = activeAddress.phone || userProfile?.phone || '';
-      resolvedLat = activeAddress.lat ? parseFloat(activeAddress.lat) : (addressForm.lat ? parseFloat(addressForm.lat) : null);
-      resolvedLng = activeAddress.lng ? parseFloat(activeAddress.lng) : (addressForm.lng ? parseFloat(addressForm.lng) : null);
-
-      finalShippingAddress = {
-        fullName: finalCustomerName,
-        phone: finalCustomerPhone,
-        houseNo: activeAddress.houseNo || '',
-        street: activeAddress.street || activeAddress.address || '',
-        locality: activeAddress.locality || activeAddress.area || '',
-        city: activeAddress.city || 'Baharagora',
-        pincode: activeAddress.pincode || '832101',
-        type: activeAddress.type || 'Home',
-        lat: resolvedLat,
-        lng: resolvedLng,
-        deliveryInstructions: activeAddress.deliveryInstructions || addressForm.deliveryInstructions || '',
-        addressLine1: [activeAddress.houseNo, activeAddress.street || activeAddress.address, activeAddress.locality, activeAddress.city, activeAddress.pincode].filter(Boolean).join(', ')
-      };
-    }
-
-    // DYNAMIC DELIVERY RADIUS & TEXT SERVICEABILITY CHECK
-    const textServiceCheck = checkAddressTextServiceability(finalShippingAddress, deliveryRadius);
-    if (!textServiceCheck.isServiceable) {
-      if (showToast) showToast(textServiceCheck.reason);
-      return;
-    }
-
-    // Guarantee coordinates resolution from address text / landmarks if resolvedLat is null
-    if (!resolvedLat || !resolvedLng || isNaN(resolvedLat) || isNaN(resolvedLng)) {
-      const fallbackResolved = await resolveOrderCoordinates({
-        deliveryAddress: finalShippingAddress.addressLine1,
-        address: finalShippingAddress.addressLine1,
-        shippingAddress: finalShippingAddress,
-      });
-      if (fallbackResolved && fallbackResolved.lat && fallbackResolved.lng) {
-        resolvedLat = fallbackResolved.lat;
-        resolvedLng = fallbackResolved.lng;
-        finalShippingAddress.lat = resolvedLat;
-        finalShippingAddress.lng = resolvedLng;
-      }
-    }
-
-    if (resolvedLat && resolvedLng) {
-      const radiusCheck = checkDeliveryServiceable(resolvedLat, resolvedLng, AGF_CAFE_HUB, deliveryRadius);
-      if (!radiusCheck.isServiceable) {
-        if (showToast) {
-          showToast(`🚫 Delivery Unavailable: Address is ${radiusCheck.distanceKm} km away. AGF Cafe delivers strictly within ${deliveryRadius} km!`);
-        }
-        return;
-      }
-    }
-
-    // Calculate aerial straight-line radius (for delivery zone check) and true driving road distance
-    const calculatedRadiusKm = resolvedLat && resolvedLng 
-      ? calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, resolvedLat, resolvedLng)
-      : (geoCheckResult?.distanceKm || 2.5);
-
-    let roadDistanceKm = calculatedRadiusKm;
-    let roadDurationMins = null;
-
-    if (resolvedLat && resolvedLng) {
-      try {
-        const roadRoute = await fetchRoadRoute(AGF_CAFE_HUB, { lat: resolvedLat, lng: resolvedLng });
-        if (roadRoute && roadRoute.totalDistanceKm > 0) {
-          roadDistanceKm = roadRoute.totalDistanceKm;
-          roadDurationMins = roadRoute.totalDurationMins;
-        } else {
           roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
         }
-      } catch (err) {
+      } else {
         roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
       }
-    } else {
-      roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
-    }
 
-    const calculatedETA = roadDurationMins ? `~${roadDurationMins} mins` : calculateETA(roadDistanceKm);
+      calculatedETA = roadDurationMins ? `~${roadDurationMins} mins` : calculateETA(roadDistanceKm);
+    }
 
     setIsSubmitting(true);
     const generatedId = `AGF-${Math.floor(100000 + Math.random() * 900000)}`;
     const randomOtp = String(Math.floor(1000 + Math.random() * 9000));
 
+    const finalPaymentMethod = isDineIn && paymentMethod === 'cash' ? 'counter_cash' : paymentMethod;
+    const finalPaymentStatus = isDineIn && paymentMethod === 'cash' ? 'pending' : (paymentMethod === 'online' ? 'paid' : 'pending');
+
     const orderPayload = {
       orderId: generatedId,
+      orderType: isDineIn ? 'dine-in' : 'delivery',
+      tableNumber: isDineIn ? String(tableNumber || '1') : null,
       userId: currentUser ? currentUser.uid : null,
       customerEmail: currentUser ? currentUser.email : null,
       customerName: finalCustomerName,
@@ -468,13 +499,14 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       aerialDistanceKm: calculatedRadiusKm,
       deliveryEta: calculatedETA,
       deliveryInstructions: finalShippingAddress.deliveryInstructions || '',
-      paymentMethod: paymentMethod,
+      paymentMethod: finalPaymentMethod,
+      paymentStatus: finalPaymentStatus,
       items: cart,
       subtotal: subtotal,
       discountAmount: discountAmount || 0,
       couponApplied: appliedCoupon ? appliedCoupon.code : null,
       appliedCouponId: appliedCoupon ? (appliedCoupon.id || null) : null,
-      deliveryFee: deliveryFee,
+      deliveryFee: isDineIn ? 0 : deliveryFee,
       deliveryFeeOriginal: deliveryFeeOriginal,
       deliveryFeeSaved: deliveryFeeSaved,
       platformFee: platformFee,
@@ -486,13 +518,71 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       grandTotal: grandTotal,
       totalAmount: grandTotal,
       status: 'Order Received',
+      source: isDineIn ? 'qr_table' : 'web_delivery',
       deliveryOtp: randomOtp,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
     try {
-      await addDoc(collection(db, 'orders'), orderPayload);
+      const targetCollection = isDineIn ? 'offline_orders' : 'orders';
+      const docRef = await addDoc(collection(db, targetCollection), orderPayload);
+
+      // If Dine-In table order:
+      // 1. Update table occupancy status
+      // 2. Save/Update offline customer record in dedicated offline_customers collection
+      if (isDineIn) {
+        if (tableNumber) {
+          try {
+            const tableDocRef = doc(db, 'tables', `table-${tableNumber}`);
+            await setDoc(
+              tableDocRef,
+              {
+                id: `table-${tableNumber}`,
+                tableNumber: String(tableNumber),
+                name: `Table ${tableNumber}`,
+                status: 'occupied',
+                activeOrderId: docRef.id,
+                currentGuestName: finalCustomerName,
+                currentGuestPhone: finalCustomerPhone,
+                lastOrderTime: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          } catch (tErr) {
+            console.warn('Table update error in checkout:', tErr);
+          }
+        }
+
+        // Dedicated offline customer CRM entry
+        if (finalCustomerPhone) {
+          try {
+            const customerDocRef = doc(db, 'offline_customers', finalCustomerPhone);
+            await setDoc(
+              customerDocRef,
+              {
+                phone: finalCustomerPhone,
+                name: finalCustomerName,
+                totalVisits: increment(1),
+                totalSpent: increment(grandTotal),
+                lastTableNumber: String(tableNumber || '1'),
+                lastOrderId: docRef.id,
+                lastOrderAmount: grandTotal,
+                lastVisitAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            );
+          } catch (cErr) {
+            console.warn('Offline customer CRM record error:', cErr);
+          }
+        }
+
+        if (setDineInActiveOrder) {
+          setDineInActiveOrder(docRef.id);
+        }
+      }
 
       // Trigger Order Received Confirmation Email
       if (orderPayload.customerEmail) {
@@ -517,14 +607,17 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     setConfirmedOrder({
       id: generatedId,
       otp: randomOtp,
+      isDineIn: Boolean(isDineIn),
+      tableNumber: String(tableNumber || ''),
       name: finalCustomerName,
       phone: finalCustomerPhone,
       address: finalShippingAddress.addressLine1,
-      paymentMethod: paymentMethod,
+      paymentMethod: finalPaymentMethod,
+      items: [...cart],
       subtotal: subtotal,
       discount: discountAmount,
       couponCode: appliedCoupon?.code || null,
-      deliveryFee: deliveryFee,
+      deliveryFee: isDineIn ? 0 : deliveryFee,
       deliveryFeeOriginal: deliveryFeeOriginal,
       deliveryFeeSaved: deliveryFeeSaved,
       platformFee: platformFee,
@@ -547,8 +640,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  // Mandatory Login Gate: Guests cannot place orders without signing in
-  if (!currentUser) {
+  // Mandatory Login Gate: Online delivery requires signing in. Table Dine-In uses Table/Guest session.
+  if (!currentUser && !isDineIn) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
         <div className="relative w-full max-w-md bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-stone-100 text-center space-y-4">
@@ -599,11 +692,20 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] uppercase tracking-widest text-amber-400 font-black">
-                {isSubmitted ? 'Order Receipt' : 'Express Checkout'}
+                {isSubmitted
+                  ? (confirmedOrder?.isDineIn ? 'Dine-In Kitchen Ticket' : 'Order Receipt')
+                  : (isDineIn ? `Table #${tableNumber || '1'} Dine-In` : 'Express Checkout')}
               </span>
+              {isDineIn && !isSubmitted && (
+                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  ₹0 Delivery Fee
+                </span>
+              )}
             </div>
             <h3 className="text-xl sm:text-2xl font-black text-white font-serif mt-0.5">
-              {isSubmitted ? 'Order Confirmed! 🎉' : 'Delivery & Payment'}
+              {isSubmitted
+                ? (confirmedOrder?.isDineIn ? `Order Received for Table #${confirmedOrder.tableNumber}! ☕` : 'Order Confirmed! 🎉')
+                : (isDineIn ? `Order for Table #${tableNumber || '1'}` : 'Delivery & Payment')}
             </h3>
           </div>
           <button
@@ -620,25 +722,31 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
           {isSubmitted && confirmedOrder ? (
             <div className="text-center py-4 space-y-5 animate-in fade-in zoom-in-95">
               <div className="w-16 h-16 bg-gradient-to-tr from-amber-400 to-amber-500 text-stone-950 rounded-2xl flex items-center justify-center mx-auto shadow-lg shadow-amber-500/25 animate-bounce">
-                <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />
+                {confirmedOrder.isDineIn ? <ChefHat className="w-9 h-9 stroke-[2.3]" /> : <CheckCircle2 className="w-9 h-9 stroke-[2.5]" />}
               </div>
 
               <div>
                 <h4 className="text-2xl font-black text-white font-serif">
-                  Your Meal is Being Prepared! ☕
+                  {confirmedOrder.isDineIn
+                    ? `Kitchen Ticket Sent to Chef! 🍳`
+                    : `Your Meal is Being Prepared! ☕`}
                 </h4>
                 <p className="text-xs sm:text-sm text-stone-400 mt-1 max-w-sm mx-auto">
-                  Our chef is brewing your favorites. Our rider will arrive at your doorstep in approx 25-30 minutes.
+                  {confirmedOrder.isDineIn
+                    ? `Your order has been sent to our kitchen display. Hot and fresh food will be served directly to Table #${confirmedOrder.tableNumber}.`
+                    : `Our chef is brewing your favorites. Our rider will arrive at your doorstep in approx 25-30 minutes.`}
                 </p>
               </div>
 
-              {/* Order PIN Code Card */}
+              {/* Order Status / PIN Card */}
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl max-w-sm mx-auto text-center space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block">
-                  Delivery Handover PIN (Share with rider)
+                  {confirmedOrder.isDineIn
+                    ? `Dine-In Table #${confirmedOrder.tableNumber} • Order #${confirmedOrder.id}`
+                    : `Delivery Handover PIN (Share with rider)`}
                 </span>
-                <span className="text-3xl font-black text-white font-mono tracking-widest block">
-                  {confirmedOrder.otp}
+                <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-widest block">
+                  {confirmedOrder.isDineIn ? 'Order Placed 🔔' : confirmedOrder.otp}
                 </span>
               </div>
 
@@ -649,19 +757,74 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                   <span className="font-bold text-white font-mono">#{confirmedOrder.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400">Recipient</span>
+                  <span className="text-stone-400">Guest / Recipient</span>
                   <span className="font-bold text-white">{confirmedOrder.name} ({confirmedOrder.phone})</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-400 shrink-0 mr-4">Delivery Address</span>
-                  <span className="font-medium text-stone-200 text-right leading-relaxed">{confirmedOrder.address}</span>
+                  <span className="text-stone-400 shrink-0 mr-4">
+                    {confirmedOrder.isDineIn ? 'Table Seating' : 'Delivery Address'}
+                  </span>
+                  <span className="font-medium text-stone-200 text-right leading-relaxed">
+                    {confirmedOrder.isDineIn ? `Table #${confirmedOrder.tableNumber} (AGF Cafe Floor)` : confirmedOrder.address}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-stone-400">Payment Mode</span>
                   <span className="font-bold text-amber-400 uppercase">
-                    {confirmedOrder.paymentMethod === 'cash' ? 'Cash on Delivery' : 'Online UPI / Card'}
+                    {confirmedOrder.paymentMethod === 'counter_cash'
+                      ? 'Pay at Counter (Cash/Card after eating)'
+                      : confirmedOrder.paymentMethod === 'cash'
+                      ? 'Cash on Delivery'
+                      : 'Online UPI / Card'}
                   </span>
                 </div>
+
+                {confirmedOrder.items && confirmedOrder.items.length > 0 && (
+                  <div className="border-t border-stone-800/80 pt-2 space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-stone-400 block">
+                      Dishes & Add-ons Ordered ({confirmedOrder.items.length}):
+                    </span>
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                      {confirmedOrder.items.map((it, idx) => {
+                        const addons = [];
+                        if (it.selectedCrust && typeof it.selectedCrust === 'string' && it.selectedCrust.toLowerCase() !== 'standard') {
+                          addons.push({ name: it.selectedCrust });
+                        } else if (it.selectedCrust?.name && it.selectedCrust.name.toLowerCase() !== 'standard') {
+                          addons.push({ name: it.selectedCrust.name });
+                        }
+                        const raw = it.selectedAddOns || it.selectedAddons || it.addons || it.addOns || [];
+                        raw.forEach(a => {
+                          if (typeof a === 'string' && a.trim()) addons.push({ name: a.trim() });
+                          else if (a?.name) addons.push({ name: a.name, price: a.price });
+                        });
+
+                        return (
+                          <div key={idx} className="bg-stone-900/90 p-2 rounded-xl border border-stone-800/80">
+                            <div className="flex justify-between items-center text-xs text-stone-200">
+                              <span className="font-bold">{it.quantity}x {it.name}</span>
+                              <span className="font-mono text-amber-400">₹{(it.price || it.basePrice || 0) * (it.quantity || 1)}</span>
+                            </div>
+                            {addons.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1 pl-1">
+                                {addons.map((ad, aIdx) => (
+                                  <span key={aIdx} className="text-[10px] text-amber-300 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                                    + {ad.name} {ad.price > 0 && `(₹${ad.price})`}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {it.specialInstructions && (
+                              <p className="text-[10px] text-stone-400 italic pl-1 mt-0.5">
+                                Note: "{it.specialInstructions}"
+                              </p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {confirmedOrder.subtotal !== undefined && (
                   <div className="flex justify-between border-t border-stone-800/80 pt-2">
                     <span className="text-stone-400">Items Subtotal</span>
@@ -676,7 +839,9 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                 )}
                 <div className="flex justify-between text-stone-400">
                   <span>Delivery Partner Fee</span>
-                  <span>{confirmedOrder.deliveryFee === 0 ? 'FREE' : `₹${confirmedOrder.deliveryFee}`}</span>
+                  <span className="text-emerald-400 font-bold">
+                    {confirmedOrder.isDineIn || confirmedOrder.deliveryFee === 0 ? 'FREE (₹0)' : `₹${confirmedOrder.deliveryFee}`}
+                  </span>
                 </div>
                 {confirmedOrder.platformFee !== undefined && (
                   <div className="flex justify-between text-stone-400">
@@ -702,25 +867,86 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                 </div>
               </div>
 
-              <Button onClick={handleClose} className="w-full py-3.5 mt-2">
-                Back to Cafe Dining
-              </Button>
+              {confirmedOrder.isDineIn ? (
+                <div className="space-y-2 pt-2">
+                  <Button
+                    onClick={() => {
+                      handleClose();
+                      if (setIsOrderTrackerOpen) setIsOrderTrackerOpen(true);
+                    }}
+                    className="w-full py-3.5 justify-center gap-2 font-black text-sm bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 rounded-2xl shadow-lg shadow-amber-500/20 cursor-pointer"
+                  >
+                    <ChefHat className="w-4 h-4" />
+                    <span>Track Kitchen Status Live</span>
+                  </Button>
+                  <button
+                    onClick={handleClose}
+                    className="w-full py-2 text-xs text-stone-400 hover:text-stone-200 transition-colors"
+                  >
+                    Order More Dishes or Drinks
+                  </button>
+                </div>
+              ) : (
+                <Button onClick={handleClose} className="w-full py-3.5 mt-2">
+                  Back to Cafe Dining
+                </Button>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmitOrder} className="space-y-6">
               {/* ======================================================== */}
-              {/* DELIVERY ADDRESS SECTION (Grovery-Hub Pattern)           */}
+              {/* DINE-IN TABLE SEATING OR DELIVERY ADDRESS SECTION         */}
               {/* ======================================================== */}
-              <div className="space-y-3.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
-                      <MapPin className="w-4 h-4" />
+              {isDineIn ? (
+                <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-500/15 via-stone-900 to-stone-950 border border-amber-500/30 space-y-3 shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-amber-400 text-stone-950 flex items-center justify-center font-black shadow-lg shadow-amber-500/20">
+                        <UtensilsCrossed className="w-6 h-6 stroke-[2.3]" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                            Table Dine-In
+                          </span>
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                            ₹0 Delivery Fee
+                          </span>
+                        </div>
+                        <h4 className="text-base font-bold text-white mt-0.5">
+                          Table #{tableNumber || '1'}
+                        </h4>
+                      </div>
                     </div>
-                    <h4 className="text-sm font-black text-white font-serif">
-                      Delivery Location
-                    </h4>
                   </div>
+
+                  <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs text-stone-300">
+                    <div className="flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Guest: <strong className="text-white font-bold">{customerInfo?.name || 'Customer'}</strong></span>
+                    </div>
+                    {customerInfo?.phone && (
+                      <div className="flex items-center gap-1.5 text-stone-400">
+                        <Phone className="w-3.5 h-3.5 text-stone-500" />
+                        <span>+91 {customerInfo.phone}</span>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-amber-400/80 bg-amber-400/10 px-3 py-1.5 rounded-xl border border-amber-400/20">
+                    🔔 Food will be served hot and fresh directly to your table by our floor staff.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <MapPin className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-sm font-black text-white font-serif">
+                        Delivery Location
+                      </h4>
+                    </div>
 
                   {hasSavedAddress && !showNewAddressForm && (
                     <button
@@ -1034,6 +1260,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
               </div>
+              )}
 
               {/* ======================================================== */}
               {/* PAYMENT METHOD SELECTION                                 */}
@@ -1060,8 +1287,12 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                     />
                     <span className="text-base">💵</span>
                     <div>
-                      <span className="block text-white font-bold">Cash on Delivery</span>
-                      <span className="text-[10px] text-stone-400 font-normal">Pay at your doorstep</span>
+                      <span className="block text-white font-bold">
+                        {isDineIn ? 'Pay at Counter' : 'Cash on Delivery'}
+                      </span>
+                      <span className="text-[10px] text-stone-400 font-normal">
+                        {isDineIn ? 'Cash or UPI after eating' : 'Pay at your doorstep'}
+                      </span>
                     </div>
                   </label>
 
@@ -1083,7 +1314,9 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                     <span className="text-base">💳</span>
                     <div>
                       <span className="block text-white font-bold">Online UPI / Card</span>
-                      <span className="text-[10px] text-stone-400 font-normal">Instant digital checkout</span>
+                      <span className="text-[10px] text-stone-400 font-normal">
+                        {isDineIn ? 'Instant digital payment' : 'Instant digital checkout'}
+                      </span>
                     </div>
                   </label>
                 </div>

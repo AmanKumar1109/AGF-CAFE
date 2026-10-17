@@ -12,9 +12,11 @@ import {
   Percent,
   AlertCircle,
   Copy,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useCart } from '../../../context/useCart';
 import { useAuth } from '../../../context/useAuth';
+import { useDineIn } from '../../../context/DineInContext';
 import { CartItem } from './CartItem';
 import { Button } from '../../../components/ui/Button';
 import { CheckoutModal } from './CheckoutModal';
@@ -51,6 +53,7 @@ export const CartDrawer = () => {
   } = useCart();
 
   const { currentUser, setIsAuthModalOpen } = useAuth();
+  const { isDineIn, tableNumber, customerInfo, setIsTableEntryModalOpen } = useDineIn();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(false);
   const [showCouponsList, setShowCouponsList] = useState(false);
@@ -64,6 +67,17 @@ export const CartDrawer = () => {
   }, [currentUser, pendingCheckout]);
 
   const handleProceedToCheckout = () => {
+    // If Dine-In table order: customer details are collected via table entry modal
+    if (isDineIn) {
+      if (!customerInfo.name || !customerInfo.phone) {
+        setIsTableEntryModalOpen(true);
+        return;
+      }
+      setIsCartOpen(false);
+      setIsCheckoutOpen(true);
+      return;
+    }
+
     if (!currentUser) {
       if (showToast) showToast('Please sign in first to place your order! ☕');
       setIsCartOpen(false);
@@ -96,12 +110,19 @@ export const CartDrawer = () => {
             <div className="flex items-center justify-between p-5 border-b border-stone-800/80">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <ShoppingBag className="w-5 h-5" />
+                  {isDineIn ? <UtensilsCrossed className="w-5 h-5 text-amber-400" /> : <ShoppingBag className="w-5 h-5" />}
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-base">Your Cart</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-white text-base">Your Cart</h3>
+                    {isDineIn && (
+                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                        Table #{tableNumber}
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-stone-400">
-                    {totalCount} item{totalCount === 1 ? '' : 's'} added
+                    {totalCount} item{totalCount === 1 ? '' : 's'} • {isDineIn ? 'Dine-In' : 'Doorstep Delivery'}
                   </p>
                 </div>
               </div>
@@ -372,7 +393,7 @@ export const CartDrawer = () => {
                   )}
 
                   {/* Free Delivery Nudge if applicable */}
-                  {deliveryFee > 0 && (
+                  {deliveryFee > 0 && !isDineIn && (
                     <div className="flex items-center gap-1 text-[11px] text-amber-400/90 bg-amber-500/10 p-2 rounded-lg">
                       <Sparkles className="w-3.5 h-3.5 shrink-0" />
                       <span>Add ₹{Math.max(0, 500 - (subtotal - discountAmount))} more for FREE delivery!</span>

@@ -34,9 +34,11 @@ export const useRealDashboardData = (timeframe = '30days') => {
     let unsubs = [];
 
     try {
-      // 1. Orders
+      // 1. Online Delivery Orders (Offline dine-in orders are isolated in OfflinePosView)
       const unsubOrders = onSnapshot(collection(db, 'orders'), (snap) => {
-        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const list = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(o => o.orderType !== 'dine-in' && o.source !== 'qr_table' && o.source !== 'counter_pos');
         setOrders(list);
         setLoading(false);
       }, (err) => console.warn('Dashboard orders listener error:', err));

@@ -16,6 +16,12 @@ export const NAV_CATEGORIES = [
         path: '/orders',
       },
       {
+        id: 'offline-tables',
+        label: 'Offline POS & Tables',
+        icon: 'UtensilsCrossed',
+        path: '/offline-tables',
+      },
+      {
         id: 'fleet-radar',
         label: 'Live Fleet Radar & Map',
         icon: 'Radio',

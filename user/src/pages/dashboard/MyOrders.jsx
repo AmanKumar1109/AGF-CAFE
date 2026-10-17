@@ -52,7 +52,10 @@ export const MyOrders = () => {
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
       const fetchedOrders = [];
       querySnapshot.forEach((docSnap) => {
-        fetchedOrders.push({ id: docSnap.id, ...docSnap.data() });
+        const orderData = docSnap.data();
+        if (orderData.orderType !== 'dine-in' && orderData.source !== 'qr_table' && orderData.source !== 'counter_pos') {
+          fetchedOrders.push({ id: docSnap.id, ...orderData });
+        }
       });
       
       const getTimeMs = (val) => {
@@ -370,9 +373,14 @@ export const MyOrders = () => {
                     <p className="text-xs font-bold text-stone-500 mt-1">
                       {itemCount} Items • {order.paymentMethod || 'Online'} Payment
                     </p>
-                    {order.items?.some(i => i.selectedAddOns?.length > 0 || i.specialInstructions) && (
+                    {order.items?.some(i => (i.selectedAddOns?.length > 0 || i.addons?.length > 0 || i.addOns?.length > 0 || i.specialInstructions || (i.selectedCrust && i.selectedCrust !== 'Standard'))) && (
                       <div className="mt-1 flex flex-wrap gap-1">
-                        {order.items.flatMap(i => (i.selectedAddOns || []).map(a => a.name)).slice(0, 3).map((addonName, aIdx) => (
+                        {order.items.flatMap(i => {
+                          const list = (i.selectedAddOns || i.addons || i.addOns || []).map(a => typeof a === 'string' ? a : (a.name || a.title)).filter(Boolean);
+                          if (i.selectedCrust && typeof i.selectedCrust === 'string' && i.selectedCrust !== 'Standard') list.unshift(i.selectedCrust);
+                          else if (i.selectedCrust?.name && i.selectedCrust.name !== 'Standard') list.unshift(i.selectedCrust.name);
+                          return list;
+                        }).map((addonName, aIdx) => (
                           <span key={aIdx} className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200/80 px-1.5 py-0.5 rounded">
                             + {addonName}
                           </span>

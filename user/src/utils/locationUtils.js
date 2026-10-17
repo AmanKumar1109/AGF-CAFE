@@ -82,6 +82,32 @@ export function checkDeliveryServiceable(lat, lng, storeHub = AGF_CAFE_HUB, cust
 }
 
 /**
+ * Checks if a customer coordinate is physically at AGF Cafe for Dine-In Table Ordering.
+ * Standard cafe radius is ~150 meters (0.15 km) from the store hub.
+ */
+export function checkDineInGeofence(lat, lng, maxMeters = 150) {
+  if (!lat || !lng) {
+    return {
+      isWithinGeofence: false,
+      distanceMeters: null,
+      maxMeters,
+      error: 'Location coordinates missing'
+    };
+  }
+
+  const distanceKm = calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, lat, lng);
+  const distanceMeters = Math.round(distanceKm * 1000);
+  const isWithinGeofence = distanceMeters <= maxMeters;
+
+  return {
+    isWithinGeofence,
+    distanceMeters,
+    maxMeters,
+    isNearCafe: distanceMeters <= (maxMeters * 2.5) // ~375m grace threshold for slight GPS drift indoors
+  };
+}
+
+/**
  * Calculates Estimated Time of Arrival (Kitchen Prep + Road Travel Time)
  */
 export function calculateETA(distanceKm, prepMinutes = 12, averageSpeedKmH = 26) {

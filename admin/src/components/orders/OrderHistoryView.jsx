@@ -309,19 +309,54 @@ export const OrderHistoryView = () => {
               <div>
                 <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider mb-2">Items Ordered</h4>
                 <div className="divide-y divide-slate-100 border border-slate-100 rounded-2xl overflow-hidden">
-                  {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="p-3.5 flex items-center justify-between text-xs bg-white">
-                      <div className="flex items-center gap-3">
-                        <span className="w-6 h-6 rounded-lg bg-amber-50 text-amber-800 font-bold flex items-center justify-center text-xs">
-                          {item.quantity || 1}x
+                  {selectedOrder.items?.map((item, idx) => {
+                    const addons = [];
+                    if (item.selectedCrust && typeof item.selectedCrust === 'string' && item.selectedCrust.toLowerCase() !== 'standard') {
+                      addons.push({ name: item.selectedCrust });
+                    } else if (item.selectedCrust?.name && item.selectedCrust.name.toLowerCase() !== 'standard') {
+                      addons.push({ name: item.selectedCrust.name });
+                    }
+                    const rawAddons = item.selectedAddOns || item.selectedAddons || item.addons || item.addOns || [];
+                    if (Array.isArray(rawAddons)) {
+                      rawAddons.forEach(a => {
+                        if (typeof a === 'string' && a.trim()) addons.push({ name: a.trim() });
+                        else if (a && typeof a === 'object') {
+                          const name = a.name || a.title || a.label || '';
+                          if (name) addons.push({ name, price: a.price });
+                        }
+                      });
+                    }
+
+                    return (
+                      <div key={idx} className="p-3.5 flex items-start justify-between text-xs bg-white gap-3">
+                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                          <span className="w-6 h-6 rounded-lg bg-amber-50 text-amber-800 font-bold flex items-center justify-center text-xs shrink-0 mt-0.5">
+                            {item.quantity || 1}x
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-bold text-slate-800 block">{item.name}</span>
+                            {addons.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {addons.map((a, aIdx) => (
+                                  <span key={aIdx} className="text-[10px] bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 rounded font-medium">
+                                    + {a.name} {a.price > 0 && `(₹${a.price})`}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            {item.specialInstructions && (
+                              <p className="text-[10px] text-amber-800 italic mt-1 bg-amber-50/50 p-1 rounded">
+                                Note: "{item.specialInstructions}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-mono font-bold text-slate-700 shrink-0 pt-0.5">
+                          ₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}
                         </span>
-                        <span className="font-bold text-slate-800">{item.name}</span>
                       </div>
-                      <span className="font-mono font-bold text-slate-700">
-                        ₹{((item.price || 0) * (item.quantity || 1)).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
