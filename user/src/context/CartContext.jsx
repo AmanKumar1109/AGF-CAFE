@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, useMemo, useCallback } from 'react'
 import { db } from '../firebase';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useAuth } from './useAuth';
+import { usePricingSettings } from '../hooks/usePricingSettings';
 
 export const CartContext = createContext();
 
@@ -311,10 +312,39 @@ export const CartProvider = ({ children }) => {
     }
   }, [appliedCoupon]);
 
-  // Delivery & Final Total
+  // Dynamic Pricing Settings from Firestore
+  const { pricingSettings } = usePricingSettings();
+
+  // Delivery, Platform Fee, GST & Total Savings Calculation
   const effectiveSubtotal = Math.max(0, subtotal - discountAmount);
-  const deliveryFee = effectiveSubtotal > 499 || subtotal === 0 ? 0 : 40;
-  const grandTotal = Math.max(0, effectiveSubtotal + deliveryFee);
+
+  // 1. Delivery Partner Fee (Admin can discount from e.g. ₹40 down to ₹0)
+  const deliveryFeeOriginal = Number(pricingSettings.deliveryFeeOriginal ?? 40);
+  const isFreeDeliveryByThreshold = subtotal > 0 && pricingSettings.freeDeliveryThreshold && subtotal >= pricingSettings.freeDeliveryThreshold;
+  const isDeliveryFeeZero = !pricingSettings.deliveryFeeEnabled || isFreeDeliveryByThreshold || pricingSettings.deliveryFee === 0;
+  const deliveryFee = subtotal === 0 ? 0 : (isDeliveryFeeZero ? 0 : Number(pricingSettings.deliveryFee ?? 40));
+  const deliveryFeeSaved = subtotal > 0 ? Math.max(0, deliveryFeeOriginal - deliveryFee) : 0;
+
+  // 2. Platform Fee (Admin can discount from e.g. ₹10 down to ₹0 or ₹5)
+  const platformFeeOriginal = Number(pricingSettings.platformFeeOriginal ?? 10);
+  const isPlatformFeeZero = !pricingSettings.platformFeeEnabled || pricingSettings.platformFee === 0;
+  const platformFee = subtotal === 0 ? 0 : (isPlatformFeeZero ? 0 : Number(pricingSettings.platformFee ?? 5));
+  const platformFeeSaved = subtotal > 0 && pricingSettings.platformFeeEnabled ? Math.max(0, platformFeeOriginal - platformFee) : 0;
+
+  // 3. GST 5% (Standard Cafe Restaurant GST)
+  const gstPercentage = Number(pricingSettings.gstPercentage ?? 5.0);
+  const gstEnabled = Boolean(pricingSettings.gstEnabled ?? true);
+  const gstAmount = subtotal === 0 || !gstEnabled 
+    ? 0 
+    : Math.round((effectiveSubtotal * (gstPercentage / 100)) * 100) / 100;
+
+  // 4. Total Saved on this Order (Coupon + Delivery Fee Saved + Platform Fee Saved)
+  const totalSaved = Math.round((discountAmount + deliveryFeeSaved + platformFeeSaved) * 100) / 100;
+
+  // 5. Grand Total (Net payable)
+  const grandTotal = subtotal === 0 
+    ? 0 
+    : Math.max(0, Math.round((effectiveSubtotal + deliveryFee + platformFee + gstAmount) * 100) / 100);
 
   return (
     <CartContext.Provider
@@ -330,8 +360,22 @@ export const CartProvider = ({ children }) => {
         totalCount,
         subtotal,
         discountAmount,
+        // Delivery Partner Fee
         deliveryFee,
+        deliveryFeeOriginal,
+        deliveryFeeSaved,
+        // Platform Fee
+        platformFee,
+        platformFeeOriginal,
+        platformFeeSaved,
+        // GST 5%
+        gstPercentage,
+        gstEnabled,
+        gstAmount,
+        // Total Money Saved
+        totalSaved,
         grandTotal,
+        pricingSettings,
         toastMessage,
         showToast,
         // Coupon system exports

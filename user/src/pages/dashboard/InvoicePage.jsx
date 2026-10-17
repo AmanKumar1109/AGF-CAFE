@@ -87,8 +87,11 @@ export const InvoicePage = () => {
   });
 
   const deliveryFee = parseFloat(order.deliveryFee || 0);
+  const platformFee = parseFloat(order.platformFee || 0);
+  const gstAmount = parseFloat(order.gstAmount || 0);
   const discountAmount = parseFloat(order.discountAmount || 0);
-  const netPayable = parseFloat(order.totalAmount || order.grandTotal || (itemsTotal + deliveryFee - discountAmount));
+  const totalSaved = parseFloat(order.totalSaved || 0);
+  const netPayable = parseFloat(order.totalAmount || order.grandTotal || (itemsTotal + deliveryFee + platformFee + gstAmount - discountAmount));
   const customerName = order.customerName || order.shippingAddress?.fullName || userProfile?.fullName || userProfile?.name || 'Customer';
   const customerPhone = order.customerPhone || order.shippingAddress?.phone || userProfile?.phone || '';
 
@@ -225,18 +228,51 @@ export const InvoicePage = () => {
           
           {/* Summary */}
           <div className="border-t border-black border-dashed py-2 space-y-1 text-[11px]">
-            {deliveryFee > 0 && (
+            {deliveryFee > 0 ? (
               <div className="flex justify-between">
-                <span>Delivery Fee</span>
+                <span>Delivery Partner Fee</span>
                 <span>: ₹{deliveryFee.toFixed(2)}</span>
               </div>
+            ) : (order.deliveryFeeSaved > 0 || order.deliveryFee === 0) && (
+              <div className="flex justify-between text-emerald-850">
+                <span>Delivery Partner Fee</span>
+                <span>: FREE {order.deliveryFeeSaved ? `(Saved ₹${order.deliveryFeeSaved})` : ''}</span>
+              </div>
             )}
+
+            {platformFee > 0 ? (
+              <div className="flex justify-between">
+                <span>Platform Fee</span>
+                <span>: ₹{platformFee.toFixed(2)}</span>
+              </div>
+            ) : (order.platformFeeSaved > 0 || order.platformFee === 0) && (
+              <div className="flex justify-between text-emerald-850">
+                <span>Platform Fee</span>
+                <span>: FREE {order.platformFeeSaved ? `(Saved ₹${order.platformFeeSaved})` : ''}</span>
+              </div>
+            )}
+
+            {gstAmount > 0 && (
+              <div className="flex justify-between">
+                <span>Govt. Taxes (GST {order.gstPercentage || 5}%)</span>
+                <span>: ₹{gstAmount.toFixed(2)}</span>
+              </div>
+            )}
+
             {discountAmount > 0 && (
               <div className="flex justify-between font-bold">
                 <span>Discount / Coupon</span>
                 <span>: -₹{discountAmount.toFixed(2)}</span>
               </div>
             )}
+
+            {totalSaved > 0 && (
+              <div className="flex justify-between font-bold text-emerald-850 bg-emerald-50 px-1 py-0.5 rounded">
+                <span>Total Money Saved</span>
+                <span>: ₹{totalSaved.toFixed(2)}</span>
+              </div>
+            )}
+
             <div className="flex justify-between font-bold text-[13px] mt-1 pt-1 border-t border-black border-dashed">
               <span>NET PAYABLE</span>
               <span>: Rs. {netPayable.toFixed(2)}</span>

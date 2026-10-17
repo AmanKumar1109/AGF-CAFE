@@ -44,6 +44,15 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     subtotal,
     discountAmount,
     deliveryFee,
+    deliveryFeeOriginal,
+    deliveryFeeSaved,
+    platformFee,
+    platformFeeOriginal,
+    platformFeeSaved,
+    gstPercentage,
+    gstAmount,
+    gstEnabled,
+    totalSaved,
     grandTotal,
     clearCart,
     showToast,
@@ -466,6 +475,14 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       couponApplied: appliedCoupon ? appliedCoupon.code : null,
       appliedCouponId: appliedCoupon ? (appliedCoupon.id || null) : null,
       deliveryFee: deliveryFee,
+      deliveryFeeOriginal: deliveryFeeOriginal,
+      deliveryFeeSaved: deliveryFeeSaved,
+      platformFee: platformFee,
+      platformFeeOriginal: platformFeeOriginal,
+      platformFeeSaved: platformFeeSaved,
+      gstPercentage: gstPercentage,
+      gstAmount: gstAmount,
+      totalSaved: totalSaved,
       grandTotal: grandTotal,
       totalAmount: grandTotal,
       status: 'Order Received',
@@ -508,6 +525,14 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       discount: discountAmount,
       couponCode: appliedCoupon?.code || null,
       deliveryFee: deliveryFee,
+      deliveryFeeOriginal: deliveryFeeOriginal,
+      deliveryFeeSaved: deliveryFeeSaved,
+      platformFee: platformFee,
+      platformFeeOriginal: platformFeeOriginal,
+      platformFeeSaved: platformFeeSaved,
+      gstPercentage: gstPercentage,
+      gstAmount: gstAmount,
+      totalSaved: totalSaved,
       total: grandTotal,
     });
 
@@ -650,12 +675,30 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                   </div>
                 )}
                 <div className="flex justify-between text-stone-400">
-                  <span>Delivery Fee</span>
+                  <span>Delivery Partner Fee</span>
                   <span>{confirmedOrder.deliveryFee === 0 ? 'FREE' : `₹${confirmedOrder.deliveryFee}`}</span>
                 </div>
+                {confirmedOrder.platformFee !== undefined && (
+                  <div className="flex justify-between text-stone-400">
+                    <span>Platform Fee</span>
+                    <span>{confirmedOrder.platformFee === 0 ? 'FREE' : `₹${confirmedOrder.platformFee}`}</span>
+                  </div>
+                )}
+                {confirmedOrder.gstAmount > 0 && (
+                  <div className="flex justify-between text-stone-400">
+                    <span>Govt. Taxes (GST {confirmedOrder.gstPercentage || 5}%)</span>
+                    <span>₹{parseFloat(confirmedOrder.gstAmount).toFixed(2)}</span>
+                  </div>
+                )}
+                {confirmedOrder.totalSaved > 0 && (
+                  <div className="flex justify-between font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20 text-xs">
+                    <span>Total Money Saved</span>
+                    <span>₹{parseFloat(confirmedOrder.totalSaved).toFixed(2)} 🎉</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-2 border-t border-stone-800/80 text-sm font-black text-white">
                   <span>Grand Total</span>
-                  <span className="text-amber-400 font-mono">₹{confirmedOrder.total}</span>
+                  <span className="text-amber-400 font-mono">₹{parseFloat(confirmedOrder.total).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -1169,20 +1212,79 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                     </div>
                   )}
 
-                  <div className="flex justify-between">
-                    <span>Delivery Fee:</span>
+                  {/* Delivery Partner Fee */}
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1.5">
+                      <span>Delivery Partner Fee:</span>
+                      {deliveryFeeSaved > 0 && (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded font-bold">
+                          Save ₹{deliveryFeeSaved}
+                        </span>
+                      )}
+                    </span>
                     <span>
-                      {deliveryFee === 0 ? (
-                        <span className="text-emerald-400 font-semibold">FREE</span>
+                      {deliveryFeeSaved > 0 ? (
+                        <span className="flex items-center gap-1.5 font-bold">
+                          <span className="line-through text-stone-500 font-normal">₹{deliveryFeeOriginal}</span>
+                          <span className="text-emerald-400 font-black">{deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}</span>
+                        </span>
                       ) : (
-                        `₹${deliveryFee}`
+                        <span className={deliveryFee === 0 ? 'text-emerald-400 font-bold' : 'text-stone-200'}>
+                          {deliveryFee === 0 ? 'FREE' : `₹${deliveryFee}`}
+                        </span>
                       )}
                     </span>
                   </div>
 
+                  {/* Platform Fee */}
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1.5">
+                      <span>Platform Fee:</span>
+                      {platformFeeSaved > 0 && (
+                        <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded font-bold">
+                          Save ₹{platformFeeSaved}
+                        </span>
+                      )}
+                    </span>
+                    <span>
+                      {platformFeeSaved > 0 ? (
+                        <span className="flex items-center gap-1.5 font-bold">
+                          <span className="line-through text-stone-500 font-normal">₹{platformFeeOriginal}</span>
+                          <span className="text-emerald-400 font-black">{platformFee === 0 ? 'FREE' : `₹${platformFee}`}</span>
+                        </span>
+                      ) : (
+                        <span className={platformFee === 0 ? 'text-emerald-400 font-bold' : 'text-stone-200'}>
+                          {platformFee === 0 ? 'FREE' : `₹${platformFee}`}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  {/* GST 5% */}
+                  {gstEnabled && (
+                    <div className="flex justify-between items-center text-[11px] text-stone-400">
+                      <span className="flex items-center gap-1.5">
+                        <span>Govt. Taxes (GST {gstPercentage}%):</span>
+                        <span className="text-[9px] text-stone-400 bg-stone-800 px-1.5 py-0.2 rounded border border-stone-700">Food GST</span>
+                      </span>
+                      <span className="text-stone-300 font-mono font-medium">₹{gstAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+
+                  {/* Total Money Saved celebratory banner */}
+                  {totalSaved > 0 && (
+                    <div className="flex items-center justify-between text-xs font-black text-emerald-300 bg-emerald-950/40 border border-emerald-500/30 p-2.5 rounded-xl shadow-xs">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-emerald-400 animate-pulse" />
+                        <span>Total Money Saved</span>
+                      </span>
+                      <span className="text-emerald-400 font-mono text-sm">₹{totalSaved.toFixed(2)} 🎉</span>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center text-xs pt-2 border-t border-stone-800 font-bold text-white">
                     <span>Total Bill Amount ({cart.length} items):</span>
-                    <span className="text-lg font-black text-amber-400 font-mono">₹{grandTotal}</span>
+                    <span className="text-lg font-black text-amber-400 font-mono">₹{grandTotal.toFixed(2)}</span>
                   </div>
                 </div>
 

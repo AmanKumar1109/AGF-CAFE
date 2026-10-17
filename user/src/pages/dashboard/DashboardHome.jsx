@@ -9,7 +9,8 @@ import {
   ShoppingBag, 
   Wallet, 
   HelpCircle,
-  Clock
+  Clock,
+  PiggyBank
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
@@ -70,6 +71,20 @@ export const DashboardHome = () => {
     return sum;
   }, 0);
 
+  const totalSaved = userOrders.reduce((sum, order) => {
+    if (order.status?.toLowerCase() !== 'cancelled') {
+      const explicitSaved = parseFloat(order.totalSaved || 0);
+      const discount = parseFloat(order.discountAmount || 0);
+      const deliverySaved = parseFloat(order.deliveryFeeSaved || 0);
+      const platformSaved = parseFloat(order.platformFeeSaved || 0);
+      const computed = explicitSaved > 0 
+        ? explicitSaved 
+        : (discount + deliverySaved + platformSaved + (order.deliveryFee === 0 ? 40 : 0));
+      return sum + (isNaN(computed) ? 0 : computed);
+    }
+    return sum;
+  }, 0);
+
   useEffect(() => {
     if (!containerRef.current) return;
     const items = containerRef.current.querySelectorAll('.stagger-item');
@@ -118,21 +133,7 @@ export const DashboardHome = () => {
       </div>
 
       {/* Stats Section Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6">
-        {/* Wishlist Card */}
-        <Link
-          to="/dashboard/wishlist"
-          className="stagger-item bg-white border border-stone-200 p-5 sm:p-6 rounded-3xl shadow-sm hover:border-stone-300 transition-all group block"
-        >
-          <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-200 text-pink-600 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
-            <Heart className="w-5 h-5 fill-pink-500 stroke-pink-600" />
-          </div>
-          <p className="text-[11px] font-black text-stone-500 uppercase tracking-wider">Wishlist Dishes</p>
-          <h3 className="text-2xl font-black text-stone-900 mt-1">
-            {userProfile?.wishlist?.length || 0} Saved
-          </h3>
-        </Link>
-
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {/* Total Orders Card */}
         <Link
           to="/dashboard/orders"
@@ -150,14 +151,47 @@ export const DashboardHome = () => {
         {/* Total Spent Card */}
         <Link
           to="/dashboard/orders"
-          className="stagger-item bg-white border border-stone-200 p-5 sm:p-6 rounded-3xl shadow-sm hover:border-stone-300 transition-all group block col-span-2 sm:col-span-1"
+          className="stagger-item bg-white border border-stone-200 p-5 sm:p-6 rounded-3xl shadow-sm hover:border-stone-300 transition-all group block"
         >
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
+          <div className="w-12 h-12 rounded-2xl bg-stone-100 border border-stone-200 text-stone-800 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
             <Wallet className="w-5 h-5" />
           </div>
           <p className="text-[11px] font-black text-stone-500 uppercase tracking-wider">Total Spent</p>
           <h3 className="text-2xl font-black text-stone-900 mt-1 truncate">
             {loadingOrders ? '...' : `₹${totalSpent.toFixed(2)}`}
+          </h3>
+        </Link>
+
+        {/* Total Saved Card (User Savings Hub) */}
+        <Link
+          to="/dashboard/orders"
+          className="stagger-item bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/40 border border-emerald-300/80 p-5 sm:p-6 rounded-3xl shadow-sm hover:border-emerald-400 transition-all group block relative overflow-hidden"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
+            <PiggyBank className="w-5 h-5 text-emerald-600" />
+          </div>
+          <div className="flex items-center justify-between gap-1">
+            <p className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">Total Saved</p>
+            <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300/60 px-1.5 py-0.2 rounded-full">
+              Discounts
+            </span>
+          </div>
+          <h3 className="text-2xl font-black text-emerald-700 mt-1 truncate font-mono">
+            {loadingOrders ? '...' : `₹${totalSaved.toFixed(2)}`}
+          </h3>
+        </Link>
+
+        {/* Wishlist Card */}
+        <Link
+          to="/dashboard/wishlist"
+          className="stagger-item bg-white border border-stone-200 p-5 sm:p-6 rounded-3xl shadow-sm hover:border-stone-300 transition-all group block"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-200 text-pink-600 flex items-center justify-center mb-3.5 group-hover:scale-105 transition-transform">
+            <Heart className="w-5 h-5 fill-pink-500 stroke-pink-600" />
+          </div>
+          <p className="text-[11px] font-black text-stone-500 uppercase tracking-wider">Wishlist Dishes</p>
+          <h3 className="text-2xl font-black text-stone-900 mt-1">
+            {userProfile?.wishlist?.length || 0} Saved
           </h3>
         </Link>
       </div>
