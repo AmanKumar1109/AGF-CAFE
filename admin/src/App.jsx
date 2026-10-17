@@ -14,6 +14,7 @@ import { ReferralsView } from './components/referrals/ReferralsView';
 import { NotificationsView } from './components/notifications/NotificationsView';
 import { StaffView } from './components/staff/StaffView';
 import { RiderDashboard } from './components/staff/RiderDashboard';
+import { SettingsView } from './components/settings/SettingsView';
 import { AdminOrdersProvider } from './context/AdminOrdersContext';
 
 const FleetRadarView = lazy(() => import('./components/fleet/FleetRadarView'));
@@ -55,6 +56,8 @@ export default function App() {
           <ComplaintsView />
         ) : activeTab === 'audit-logs' ? (
           <AuditLogsView />
+        ) : activeTab === 'settings' ? (
+          <SettingsView />
         ) : activeTab === 'notifications' ? (
           <NotificationsView />
         ) : activeTab === 'staff' ? (

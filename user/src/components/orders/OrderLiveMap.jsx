@@ -3,17 +3,18 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   AGF_CAFE_HUB,
-  MAX_DELIVERY_RADIUS_KM,
   calculateDistance,
   checkDeliveryServiceable,
   calculateETA,
   resolveOrderCoordinates,
   getInitialRiderCoordinates
 } from '../../utils/locationUtils';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 import { fetchRoadRoute, routePointsToLatLngs } from '../../utils/routeService';
 import { Navigation, Clock, ShieldCheck, AlertTriangle, Bike, Bell, CheckCircle2, Phone, Share2 } from 'lucide-react';
 
 export default function OrderLiveMap({ order }) {
+  const deliveryRadius = useDeliveryRadius();
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const riderMarkerRef = useRef(null);
@@ -115,9 +116,9 @@ export default function OrderLiveMap({ order }) {
     });
     tileLayer.addTo(map);
 
-    // 5 KM Geofence Circle
+    // Dynamic Geofence Circle
     L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      radius: deliveryRadius * 1000,
       color: serviceCheck.isServiceable ? '#10b981' : '#f43f5e',
       fillColor: serviceCheck.isServiceable ? '#10b981' : '#f43f5e',
       fillOpacity: serviceCheck.isServiceable ? 0.05 : 0.14,
@@ -125,7 +126,7 @@ export default function OrderLiveMap({ order }) {
     }).addTo(map);
 
     L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      radius: deliveryRadius * 1000,
       color: '#f59e0b',
       fillOpacity: 0,
       weight: 1.5,
@@ -364,7 +365,7 @@ export default function OrderLiveMap({ order }) {
 
           <div className="hidden sm:flex items-center gap-1.5 text-stone-400">
             <ShieldCheck className="w-4 h-4 text-amber-400" />
-            <span>5 KM Cafe Delivery Zone</span>
+            <span>{deliveryRadius} KM Cafe Delivery Zone</span>
           </div>
         </div>
 

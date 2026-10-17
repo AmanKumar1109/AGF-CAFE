@@ -12,8 +12,10 @@ import { ExportModal } from '../modals/ExportModal';
 import { AddWidgetModal } from '../modals/AddWidgetModal';
 import { useStaggerEntrance } from '../../hooks/useGSAPAnimation';
 import { Radio, Navigation } from 'lucide-react';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 
 export const DashboardView = ({ onNavigateTab }) => {
+  const { radiusKm } = useDeliveryRadius();
   const [timeframe, setTimeframe] = useState('30days');
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isAddWidgetModalOpen, setIsAddWidgetModalOpen] = useState(false);
@@ -102,7 +104,7 @@ export const DashboardView = ({ onNavigateTab }) => {
                 Live Delivery Fleet Radar ("God View")
               </h3>
               <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black uppercase">
-                10 KM Hub Active
+                {radiusKm} KM Hub Active
               </span>
             </div>
             <p className="text-xs text-stone-400 mt-0.5">

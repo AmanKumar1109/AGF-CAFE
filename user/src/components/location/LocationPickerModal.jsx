@@ -20,11 +20,16 @@ import {
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { loadGoogleMaps } from '../../utils/googleMapsLoader';
-import { AGF_CAFE_HUB, MAX_DELIVERY_RADIUS_KM, checkDeliveryServiceable, calculateETA } from '../../utils/locationUtils';
+import { AGF_CAFE_HUB, checkDeliveryServiceable, calculateETA } from '../../utils/locationUtils';
+import { fetchRoadRoute } from '../../utils/routeService';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 
 export default function LocationPickerModal({ isOpen, onClose, onConfirm, initialLocation }) {
+  const deliveryRadius = useDeliveryRadius();
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const geofenceCircleRef = useRef(null);
+  const geofenceOuterCircleRef = useRef(null);
   const autocompleteServiceRef = useRef(null);
   const geocoderRef = useRef(null);
 
@@ -65,28 +70,50 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
   const [isMapDragging, setIsMapDragging] = useState(false);
   const isProgrammaticMoveRef = useRef(false);
 
-  // 10 KM Serviceability
-  const serviceability = checkDeliveryServiceable(coords.lat, coords.lng);
-  const currentETA = calculateETA(serviceability.distanceKm);
+  // Dynamic Serviceability (Straight-Line Radius zone check)
+  const serviceability = checkDeliveryServiceable(coords.lat, coords.lng, AGF_CAFE_HUB, deliveryRadius);
+  const [roadDistanceKm, setRoadDistanceKm] = useState(null);
+  const [roadDurationMins, setRoadDurationMins] = useState(null);
 
-  // Quick Baharagora Locality Jump Points
+  // Debounced road route fetch whenever coordinates change
+  useEffect(() => {
+    let active = true;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetchRoadRoute(AGF_CAFE_HUB, coords);
+        if (active && res && res.totalDistanceKm > 0) {
+          setRoadDistanceKm(res.totalDistanceKm);
+          setRoadDurationMins(res.totalDurationMins);
+        }
+      } catch (e) {
+        if (active) {
+          const estimated = Math.round(serviceability.distanceKm * 1.25 * 10) / 10;
+          setRoadDistanceKm(estimated);
+        }
+      }
+    }, 350);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [coords.lat, coords.lng, serviceability.distanceKm]);
+
+  const currentETA = roadDurationMins ? `~${roadDurationMins} mins` : calculateETA(roadDistanceKm || serviceability.distanceKm);
+
+  // Quick Baharagora Locality Area Jump Points
   const QUICK_BAHARAGORA_POINTS = [
-    { name: 'Taliya / Tant House', lat: 22.2475, lng: 86.7280, landmark: 'Taliya (Near Maa Tara Tant House)' },
-    { name: 'Baharagora Chowk', lat: 22.2785, lng: 86.7160, landmark: 'Main Chowk / Bus Stand' },
-    { name: 'College Road', lat: 22.2842, lng: 86.7265, landmark: 'Baharagora College Road' },
-    { name: 'Hospital / CHC', lat: 22.2715, lng: 86.7118, landmark: 'CHC Hospital Road' },
-    { name: 'Barasol (NH49)', lat: 22.2530, lng: 86.7050, landmark: 'Barasol Toll Area' },
-    { name: 'Kaimi / Mauda', lat: 22.2435, lng: 86.7150, landmark: 'Kaimi Village' },
-    { name: 'AGF Cafe Hub', lat: AGF_CAFE_HUB.lat, lng: AGF_CAFE_HUB.lng, landmark: 'Near Shitla Mandir' },
+    { name: 'Taliya', lat: 22.2475, lng: 86.7280 },
+    { name: 'Baharagora Chowk', lat: 22.2785, lng: 86.7160 },
+    { name: 'College Road', lat: 22.2842, lng: 86.7265 },
+    { name: 'Hospital / CHC', lat: 22.2715, lng: 86.7118 },
+    { name: 'Barasol (NH49)', lat: 22.2530, lng: 86.7050 },
+    { name: 'Kaimi / Mauda', lat: 22.2435, lng: 86.7150 },
+    { name: 'AGF Cafe Hub', lat: AGF_CAFE_HUB.lat, lng: AGF_CAFE_HUB.lng },
   ];
 
   const handleSelectQuickPoint = (point) => {
     isProgrammaticMoveRef.current = true;
     setCoords({ lat: point.lat, lng: point.lng });
-    setAddressDetails(prev => ({
-      ...prev,
-      landmark: point.landmark || prev.landmark
-    }));
     if (mapInstanceRef.current) {
       mapInstanceRef.current.setView([point.lat, point.lng], 16, { animate: true, duration: 0.6 });
     }
@@ -134,13 +161,17 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
           let parsedState = 'Jharkhand';
           let parsedPincode = '';
           let streetParts = [];
+          let detectedLandmark = '';
 
           (first.address_components || []).forEach(comp => {
             const types = comp.types || [];
             if (types.includes('locality')) parsedCity = comp.long_name;
             else if (types.includes('administrative_area_level_1')) parsedState = comp.long_name;
             else if (types.includes('postal_code')) parsedPincode = comp.long_name;
-            if (types.includes('route') || types.includes('street_number') || types.includes('sublocality')) {
+            if (types.includes('sublocality') || types.includes('sublocality_level_1') || types.includes('neighborhood') || types.includes('point_of_interest')) {
+              detectedLandmark = comp.long_name;
+            }
+            if (types.includes('route') || types.includes('street_number') || types.includes('sublocality_level_2')) {
               streetParts.push(comp.long_name);
             }
           });
@@ -148,12 +179,11 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
           if (parsedCity) setCity(parsedCity);
           if (parsedState) setState(parsedState);
           if (parsedPincode) setPostalCode(parsedPincode);
-          if (streetParts.length > 0) {
-            setAddressDetails(prev => ({
-              ...prev,
-              street: prev.street || streetParts.join(', ')
-            }));
-          }
+          setAddressDetails(prev => ({
+            ...prev,
+            street: streetParts.join(', ') || prev.street,
+            landmark: detectedLandmark || prev.landmark
+          }));
           return;
         }
       });
@@ -177,8 +207,8 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
           if (detectedPincode) setPostalCode(detectedPincode);
           setAddressDetails(prev => ({
             ...prev,
-            street: prev.street || detectedStreet,
-            landmark: prev.landmark || detectedLocality
+            street: detectedStreet || prev.street,
+            landmark: detectedLocality || prev.landmark
           }));
         }
       }
@@ -211,7 +241,15 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
       },
       (err) => {
         setGpsStatus('error');
-        setGpsError(err.code === 1 ? 'Location permission denied. Please allow GPS access.' : 'Could not fetch your location.');
+        let errorMsg = 'Could not fetch your location. Please drag pin manually on map.';
+        if (err.code === 1) {
+          errorMsg = '🔒 Location permission denied. Please allow location access in your browser address bar.';
+        } else if (err.code === 2) {
+          errorMsg = '📡 GPS signal unavailable. Please ensure location/GPS is turned ON on your phone/device.';
+        } else if (err.code === 3) {
+          errorMsg = '⏱️ Location request timed out. Please drag the pin on map to your doorstep.';
+        }
+        setGpsError(errorMsg);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -276,24 +314,26 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
       attribution: '&copy; Google Maps'
     }).addTo(map);
 
-    // 10 KM Geofence Delivery Radius Circle
+    // Dynamic Geofence Delivery Radius Circle
     const isServiceable = serviceability.isServiceable;
-    L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+    const innerCircle = L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
+      radius: deliveryRadius * 1000,
       color: isServiceable ? '#10b981' : '#f43f5e',
       fillColor: isServiceable ? '#10b981' : '#f43f5e',
       fillOpacity: isServiceable ? 0.08 : 0.16,
       weight: 3
     }).addTo(map);
+    geofenceCircleRef.current = innerCircle;
 
     // Glowing Dash Border
-    L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+    const outerCircle = L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
+      radius: deliveryRadius * 1000,
       color: '#f59e0b',
       fillOpacity: 0,
       weight: 1.5,
       dashArray: '5, 8'
     }).addTo(map);
+    geofenceOuterCircleRef.current = outerCircle;
 
     // Cafe Store Marker
     const cafeIcon = L.divIcon({
@@ -323,7 +363,7 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
         <strong style="color: #d97706; font-size: 13px;">☕ ${AGF_CAFE_HUB.name}</strong>
         <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">${AGF_CAFE_HUB.address}</p>
         <span style="display: inline-block; margin-top: 4px; padding: 2px 8px; background: #ecfdf5; color: #047857; font-weight: bold; border-radius: 9999px; font-size: 10px;">
-          5 KM Fresh Delivery Origin
+          ${deliveryRadius} KM Fresh Delivery Origin
         </span>
       </div>
     `);
@@ -358,8 +398,20 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
+      geofenceCircleRef.current = null;
+      geofenceOuterCircleRef.current = null;
     };
   }, [isOpen]);
+
+  // Dynamically update geofence circles if admin changes radius live
+  useEffect(() => {
+    if (geofenceCircleRef.current && deliveryRadius) {
+      geofenceCircleRef.current.setRadius(deliveryRadius * 1000);
+    }
+    if (geofenceOuterCircleRef.current && deliveryRadius) {
+      geofenceOuterCircleRef.current.setRadius(deliveryRadius * 1000);
+    }
+  }, [deliveryRadius]);
 
   // Sync map center when coords change programmatically (GPS / Search)
   useEffect(() => {
@@ -383,12 +435,25 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
 
     setIsSearching(true);
     searchDebounceRef.current = setTimeout(() => {
-      if (autocompleteServiceRef.current) {
+      if (autocompleteServiceRef.current && window.google?.maps?.Circle) {
+        const circle = new window.google.maps.Circle({
+          center: { lat: AGF_CAFE_HUB.lat, lng: AGF_CAFE_HUB.lng },
+          radius: 20000 // 20 km search radius biased to Baharagora
+        });
+
         autocompleteServiceRef.current.getPlacePredictions(
-          { input: val, componentRestrictions: { country: 'in' } },
+          {
+            input: val,
+            componentRestrictions: { country: 'in' },
+            bounds: circle.getBounds()
+          },
           (results, status) => {
             setIsSearching(false);
-            setPredictions(status === 'OK' && results ? results : []);
+            if (status === 'OK' && results) {
+              setPredictions(results);
+            } else {
+              setPredictions([]);
+            }
           }
         );
       } else {
@@ -412,7 +477,7 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
   };
 
   const handleSelectPrediction = (p) => {
-    setSearchQuery(p.description);
+    setSearchQuery(p.structured_formatting?.main_text || p.description);
     setPredictions([]);
 
     if (p.lat && p.lon) {
@@ -426,9 +491,11 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
       geocoderRef.current.geocode({ placeId: p.place_id }, (results, status) => {
         if (status === 'OK' && results[0]) {
           const loc = results[0].geometry.location;
+          const lat = Math.round(loc.lat() * 1000000) / 1000000;
+          const lng = Math.round(loc.lng() * 1000000) / 1000000;
           isProgrammaticMoveRef.current = true;
-          setCoords({ lat: loc.lat(), lng: loc.lng() });
-          reverseGeocode(loc.lat(), loc.lng());
+          setCoords({ lat, lng });
+          reverseGeocode(lat, lng);
         }
       });
     }
@@ -465,7 +532,9 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
       formattedAddress: formattedAddress,
       deliveryInstructions: addressDetails.deliveryInstructions || '',
       type: addressDetails.type || 'Home',
-      distanceKm: serviceability.distanceKm,
+      distanceKm: roadDistanceKm || Math.round(serviceability.distanceKm * 1.25 * 10) / 10,
+      roadDistanceKm: roadDistanceKm || Math.round(serviceability.distanceKm * 1.25 * 10) / 10,
+      aerialDistanceKm: serviceability.distanceKm,
       isServiceable: serviceability.isServiceable,
       eta: currentETA
     };
@@ -490,7 +559,7 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
               <h2 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
                 <span>Pinpoint Exact Delivery Location</span>
                 <span className="px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30 text-[10px] font-bold">
-                  5 KM Radius
+                  {deliveryRadius} KM Radius
                 </span>
               </h2>
               <p className="text-xs text-stone-400">Drag map to pin your entrance for hot & fresh delivery</p>
@@ -615,12 +684,12 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
               {serviceability.isServiceable ? (
                 <div className="bg-emerald-600/95 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg border border-emerald-400/40">
                   <ShieldCheck className="w-4 h-4" />
-                  <span>🟢 Delivery Available ({serviceability.distanceKm} km • {currentETA})</span>
+                  <span>🟢 Delivery Available (~{roadDistanceKm ? `${roadDistanceKm} km Road` : `${serviceability.distanceKm} km`} • {currentETA})</span>
                 </div>
               ) : (
                 <div className="bg-rose-600/95 backdrop-blur-md text-white px-3.5 py-1.5 rounded-full text-xs font-black flex items-center gap-1.5 shadow-lg border border-rose-400/40 animate-pulse">
                   <AlertTriangle className="w-4 h-4" />
-                  <span>🔴 Outside 5 KM Zone ({serviceability.distanceKm} km away)</span>
+                  <span>🔴 Outside {deliveryRadius} KM Zone ({serviceability.distanceKm} km away)</span>
                 </div>
               )}
 
@@ -755,12 +824,12 @@ export default function LocationPickerModal({ isOpen, onClose, onConfirm, initia
             {serviceability.isServiceable ? (
               <p className="text-xs font-black text-emerald-700 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>Within 5 KM Zone ({serviceability.distanceKm} km • {currentETA})</span>
+                <span>Within {deliveryRadius} KM Zone (~{roadDistanceKm ? `${roadDistanceKm} km Road` : `${serviceability.distanceKm} km`} • {currentETA})</span>
               </p>
             ) : (
               <p className="text-xs font-black text-rose-600 flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-600" />
-                <span>Location exceeds 5 KM cafe delivery zone</span>
+                <span>Location exceeds {deliveryRadius} KM cafe delivery zone</span>
               </p>
             )}
           </div>

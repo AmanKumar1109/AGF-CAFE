@@ -742,9 +742,9 @@ export const RiderDashboardPage = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-[10px] uppercase font-bold text-emerald-400">Customer Drop</span>
-                              {order.distanceKm && (
-                                <span className="text-[10px] font-mono font-bold text-stone-400">
-                                  ~{parseFloat(order.distanceKm).toFixed(1)} km
+                              {(order.roadDistanceKm || order.distanceKm) && (
+                                <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                                  ~{parseFloat(order.roadDistanceKm || order.distanceKm).toFixed(1)} km Road
                                 </span>
                               )}
                             </div>

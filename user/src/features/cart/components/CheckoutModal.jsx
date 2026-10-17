@@ -26,17 +26,19 @@ import { useAuth } from '../../../context/useAuth';
 import { Button } from '../../../components/ui/Button';
 import { sendOrderReceivedEmail } from '../../../utils/emailTemplates';
 import LocationPickerModal from '../../../components/location/LocationPickerModal';
+import { useDeliveryRadius } from '../../../hooks/useDeliveryRadius';
+import { fetchRoadRoute } from '../../../utils/routeService';
 import { 
   checkDeliveryServiceable, 
   checkAddressTextServiceability, 
   calculateDistance, 
   calculateETA,
   resolveOrderCoordinates,
-  AGF_CAFE_HUB, 
-  MAX_DELIVERY_RADIUS_KM 
+  AGF_CAFE_HUB
 } from '../../../utils/locationUtils';
 
 export const CheckoutModal = ({ isOpen, onClose }) => {
+  const deliveryRadius = useDeliveryRadius();
   const {
     cart,
     subtotal,
@@ -141,6 +143,20 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        const serviceCheck = checkDeliveryServiceable(latitude, longitude);
+
+        setAddressForm((prev) => ({
+          ...prev,
+          lat: latitude,
+          lng: longitude,
+        }));
+
+        setGeoCheckResult({
+          isServiceable: serviceCheck.isServiceable,
+          distanceKm: serviceCheck.distanceKm,
+          eta: calculateETA(serviceCheck.distanceKm),
+        });
+
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
@@ -163,21 +179,30 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
               locality: detectedLocality || prev.locality,
               city: detectedCity || prev.city,
               pincode: detectedPincode || prev.pincode,
+              lat: latitude,
+              lng: longitude,
             }));
-            if (showToast) showToast('📍 Location detected successfully!');
           }
         } catch (err) {
-          console.error('Reverse geocode error:', err);
-          if (showToast) showToast('Could not fetch address details automatically.');
+          console.warn('Reverse geocode error:', err);
         } finally {
           setIsLocating(false);
+          if (serviceCheck.isServiceable) {
+            if (showToast) showToast(`📍 Location auto-detected (${serviceCheck.distanceKm} km from cafe)!`);
+          } else {
+            if (showToast) showToast(`⚠️ Detected location is ${serviceCheck.distanceKm} km away (outside ${deliveryRadius} km). If on laptop/PC, please use "Pin on Map" to select your exact Baharagora doorstep!`);
+          }
         }
       },
       (err) => {
         setIsLocating(false);
-        if (showToast) {
-          showToast(err.code === 1 ? 'Location permission denied. Please enter address manually.' : 'Could not fetch your location.');
+        let msg = 'Could not fetch your location. Please enter manually or Pin on Map.';
+        if (err.code === 1) {
+          msg = '🔒 Location permission denied. Please allow location in browser settings or use "Pin on Map".';
+        } else if (err.code === 3) {
+          msg = 'GPS request timed out. Please click "Pin on Map" to select location.';
         }
+        if (showToast) showToast(msg);
       },
       { timeout: 10000, enableHighAccuracy: true }
     );
@@ -356,8 +381,8 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       };
     }
 
-    // 5 KM DELIVERY RADIUS & TEXT SERVICEABILITY CHECK
-    const textServiceCheck = checkAddressTextServiceability(finalShippingAddress);
+    // DYNAMIC DELIVERY RADIUS & TEXT SERVICEABILITY CHECK
+    const textServiceCheck = checkAddressTextServiceability(finalShippingAddress, deliveryRadius);
     if (!textServiceCheck.isServiceable) {
       if (showToast) showToast(textServiceCheck.reason);
       return;
@@ -379,20 +404,40 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     }
 
     if (resolvedLat && resolvedLng) {
-      const radiusCheck = checkDeliveryServiceable(resolvedLat, resolvedLng);
+      const radiusCheck = checkDeliveryServiceable(resolvedLat, resolvedLng, AGF_CAFE_HUB, deliveryRadius);
       if (!radiusCheck.isServiceable) {
         if (showToast) {
-          showToast(`🚫 Delivery Unavailable: Address is ${radiusCheck.distanceKm} km away. AGF Cafe delivers strictly within 5 km!`);
+          showToast(`🚫 Delivery Unavailable: Address is ${radiusCheck.distanceKm} km away. AGF Cafe delivers strictly within ${deliveryRadius} km!`);
         }
         return;
       }
     }
 
-    // Calculate road / aerial distance and ETA
-    const calculatedDistanceKm = resolvedLat && resolvedLng 
+    // Calculate aerial straight-line radius (for delivery zone check) and true driving road distance
+    const calculatedRadiusKm = resolvedLat && resolvedLng 
       ? calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, resolvedLat, resolvedLng)
       : (geoCheckResult?.distanceKm || 2.5);
-    const calculatedETA = calculateETA(calculatedDistanceKm);
+
+    let roadDistanceKm = calculatedRadiusKm;
+    let roadDurationMins = null;
+
+    if (resolvedLat && resolvedLng) {
+      try {
+        const roadRoute = await fetchRoadRoute(AGF_CAFE_HUB, { lat: resolvedLat, lng: resolvedLng });
+        if (roadRoute && roadRoute.totalDistanceKm > 0) {
+          roadDistanceKm = roadRoute.totalDistanceKm;
+          roadDurationMins = roadRoute.totalDurationMins;
+        } else {
+          roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
+        }
+      } catch (err) {
+        roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
+      }
+    } else {
+      roadDistanceKm = Math.round(calculatedRadiusKm * 1.25 * 10) / 10;
+    }
+
+    const calculatedETA = roadDurationMins ? `~${roadDurationMins} mins` : calculateETA(roadDistanceKm);
 
     setIsSubmitting(true);
     const generatedId = `AGF-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -409,7 +454,9 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
       customerCoords: resolvedLat && resolvedLng ? { lat: resolvedLat, lng: resolvedLng } : { lat: AGF_CAFE_HUB.lat, lng: AGF_CAFE_HUB.lng },
       lat: resolvedLat || AGF_CAFE_HUB.lat,
       lng: resolvedLng || AGF_CAFE_HUB.lng,
-      distanceKm: calculatedDistanceKm,
+      distanceKm: roadDistanceKm,
+      roadDistanceKm: roadDistanceKm,
+      aerialDistanceKm: calculatedRadiusKm,
       deliveryEta: calculatedETA,
       deliveryInstructions: finalShippingAddress.deliveryInstructions || '',
       paymentMethod: paymentMethod,
@@ -696,7 +743,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                           className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
                         >
                           <MapPin className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>{activeAddress.lat ? 'Adjust Doorstep Pin (5 KM)' : 'Pin on Map (5 KM)'}</span>
+                          <span>{activeAddress.lat ? `Adjust Doorstep Pin (${deliveryRadius} KM)` : `Pin on Map (${deliveryRadius} KM)`}</span>
                         </button>
                         {activeAddress.lat && activeAddress.lng ? (
                           <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-1">
@@ -769,7 +816,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                           className="px-3 py-1.5 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                         >
                           <MapPin className="w-3.5 h-3.5 stroke-[2.5]" />
-                          <span>Pin on Map (5 KM)</span>
+                          <span>Pin on Map ({deliveryRadius} KM)</span>
                         </button>
 
                         <button
@@ -793,7 +840,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                       <div className="p-3 bg-emerald-950/40 border border-emerald-500/40 rounded-xl flex items-center justify-between text-xs font-bold text-emerald-300">
                         <span className="flex items-center gap-1.5">
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <span>5 KM Radius Verified: {geoCheckResult.distanceKm} km from cafe</span>
+                          <span>{deliveryRadius} KM Radius Verified: {geoCheckResult.distanceKm} km from cafe</span>
                         </span>
                         <span className="text-amber-400 font-black">{geoCheckResult.eta}</span>
                       </div>
@@ -1170,7 +1217,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
 
       </div>
 
-      {/* Interactive Map Picker Modal with 5 KM Geofence */}
+      {/* Interactive Map Picker Modal with 10 KM Geofence */}
       <LocationPickerModal
         isOpen={isLocationPickerOpen}
         onClose={() => setIsLocationPickerOpen(false)}

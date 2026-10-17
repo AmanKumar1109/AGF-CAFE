@@ -18,16 +18,17 @@ import {
   MessageSquare
 } from 'lucide-react';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 import {
   AGF_CAFE_HUB,
-  MAX_DELIVERY_RADIUS_KM,
   calculateDistance,
   checkDeliveryServiceable,
   calculateETA,
   resolveOrderCoordinates,
   getInitialRiderCoordinates
 } from '../../utils/locationUtils';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 import { fetchRoadRoute, routePointsToLatLngs, getPointAlongRoute } from '../../utils/routeService';
 
 const getSafeAddress = (orderObj) => {
@@ -42,6 +43,7 @@ const getSafeAddress = (orderObj) => {
 };
 
 export default function DeliveryMapModal({ order, onClose }) {
+  const { radiusKm } = useDeliveryRadius();
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const riderMarkerRef = useRef(null);
@@ -141,10 +143,10 @@ export default function DeliveryMapModal({ order, onClose }) {
     });
     tileLayer.addTo(map);
 
-    // 10 KM Geofence Circle
+    // Dynamic Geofence Circle
     const isServiceable = serviceCheck.isServiceable;
     L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      radius: radiusKm * 1000,
       color: isServiceable ? '#10b981' : '#f43f5e',
       fillColor: isServiceable ? '#10b981' : '#f43f5e',
       fillOpacity: isServiceable ? 0.06 : 0.16,
@@ -152,7 +154,7 @@ export default function DeliveryMapModal({ order, onClose }) {
     }).addTo(map);
 
     L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      radius: radiusKm * 1000,
       color: '#f59e0b',
       fillOpacity: 0,
       weight: 1.5,
@@ -193,7 +195,7 @@ export default function DeliveryMapModal({ order, onClose }) {
         <strong style="color: #d97706; font-size: 13px;">☕ ${AGF_CAFE_HUB.name}</strong>
         <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">${AGF_CAFE_HUB.address}</p>
         <span style="display:inline-block; margin-top:4px; padding:2px 8px; background:#ecfdf5; color:#047857; font-size:10px; font-weight:bold; border-radius:9999px;">
-          5 KM Fresh Delivery Central Hub
+          ${radiusKm} KM Fresh Delivery Central Hub
         </span>
       </div>
     `);
@@ -207,7 +209,7 @@ export default function DeliveryMapModal({ order, onClose }) {
         <strong style="color: #1e293b; font-size: 13px;">👤 Customer: ${order.customerName || 'Valued Customer'}</strong>
         <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">📍 ${getSafeAddress(order)}</p>
         <p style="margin: 4px 0 0; font-size: 11px; font-weight: bold; color: ${serviceCheck.isServiceable ? '#059669' : '#e11d48'};">
-          Distance from Hub: ${serviceCheck.distanceKm} km (${serviceCheck.isServiceable ? 'Within 5 km Zone' : 'Beyond 5 km Limit!'})
+          Distance from Hub: ${serviceCheck.distanceKm} km (${serviceCheck.isServiceable ? `Within ${radiusKm} km Zone` : `Beyond ${radiusKm} km Limit!`})
         </p>
       </div>
     `);
@@ -298,9 +300,16 @@ export default function DeliveryMapModal({ order, onClose }) {
       const roadPolylineGroup = createRouteLayerGroup(latLngs).addTo(mapInstanceRef.current);
       routePolylineRef.current = roadPolylineGroup;
 
-      if (result.success) {
+      if (result.success && result.totalDistanceKm > 0) {
         setRoadDistance(result.totalDistanceKm);
         setRoadDuration(result.totalDurationMins);
+        if (order?.id) {
+          updateDoc(doc(db, 'orders', order.id), {
+            roadDistanceKm: result.totalDistanceKm,
+            distanceKm: result.totalDistanceKm,
+            deliveryEta: `~${result.totalDurationMins} mins`
+          }).catch(console.warn);
+        }
       }
 
       if (latLngs.length > 0) {
@@ -411,7 +420,7 @@ export default function DeliveryMapModal({ order, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-stone-400 mt-0.5">
-                Baharagora 5 KM Delivery Zone & Live Rider Navigation Radar
+                Baharagora {radiusKm} KM Delivery Zone & Live Rider Navigation Radar
               </p>
             </div>
           </div>
@@ -420,12 +429,12 @@ export default function DeliveryMapModal({ order, onClose }) {
             {serviceCheck.isServiceable ? (
               <span className="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-xs font-bold flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                {displayDistance} km (Within 5 KM Zone)
+                {displayDistance} km (Within {radiusKm} KM Zone)
               </span>
             ) : (
               <span className="px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-bold flex items-center gap-1.5">
                 <AlertTriangle className="w-4 h-4 text-rose-400" />
-                {displayDistance} km (Exceeds 5 KM Limit!)
+                {displayDistance} km (Exceeds {radiusKm} KM Limit!)
               </span>
             )}
 
@@ -454,8 +463,18 @@ export default function DeliveryMapModal({ order, onClose }) {
             <div className="flex items-center gap-2">
               <Navigation className="w-4 h-4 text-emerald-400" />
               <div>
-                <span className="text-[10px] text-stone-400 uppercase font-semibold block">Total Road Distance</span>
-                <span className="text-xs font-extrabold text-emerald-400">{displayDistance} km</span>
+                <span className="text-[10px] text-stone-400 uppercase font-semibold block">Driving Road Distance</span>
+                <span className="text-xs font-black text-emerald-400">{displayDistance} km (Road)</span>
+              </div>
+            </div>
+
+            <div className="h-6 w-px bg-stone-700" />
+
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-amber-400" />
+              <div>
+                <span className="text-[10px] text-stone-400 uppercase font-semibold block">Straight Radius</span>
+                <span className="text-xs font-bold text-amber-300">{hubToCustomerStraightLine.toFixed(1)} km ({radiusKm}k Zone)</span>
               </div>
             </div>
 
@@ -520,7 +539,7 @@ export default function DeliveryMapModal({ order, onClose }) {
           {!serviceCheck.isServiceable && (
             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-rose-600 text-white px-4 py-2 rounded-2xl shadow-2xl border border-rose-400 text-xs font-black flex items-center gap-2 animate-bounce">
               <AlertTriangle className="w-4 h-4 text-white" />
-              <span>OUT OF SERVICE RADIUS: Customer is {displayDistance} km from AGF Cafe (Exceeds 5 km limit)</span>
+              <span>OUT OF SERVICE RADIUS: Customer is {displayDistance} km from AGF Cafe (Exceeds {radiusKm} km limit)</span>
             </div>
           )}
         </div>
@@ -580,7 +599,7 @@ export default function DeliveryMapModal({ order, onClose }) {
               </p>
               <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                Live Tracking Connected (5 KM Fleet Coverage)
+                Live Tracking Connected ({radiusKm} KM Fleet Coverage)
               </p>
             </div>
           </div>

@@ -139,7 +139,7 @@ const DEFAULT_POLICIES = {
 <p>At <strong>AGF CAFE</strong>, we strive to deliver hot, sizzling, and mouth-watering cafe favorites right to your doorstep in Baharagora.</p>
 
 <h2>1. Delivery Areas & Radius</h2>
-<p>We deliver across Beheragoda and surrounding localities within an <strong>8 km radius</strong> from our cafe location. If your address is outside our standard delivery zone, takeaway and self-pickup options are available.</p>
+<p>We deliver fresh food across Baharagora and surrounding localities within our active cafe delivery zone from our central kitchen. If your address is outside our delivery zone, takeaway and self-pickup options are always available.</p>
 
 <h2>2. Estimated Delivery Time</h2>
 <ul>

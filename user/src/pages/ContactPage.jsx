@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { MapPin, Phone, Mail, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { useDeliveryRadius } from '../hooks/useDeliveryRadius';
 
 export const ContactPage = () => {
+  const deliveryRadius = useDeliveryRadius();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -180,7 +182,7 @@ export const ContactPage = () => {
             {/* Delivery Radius Card */}
             <div className="bg-[#111419] rounded-3xl p-6 text-white border border-stone-800 space-y-2">
               <p className="text-xs uppercase tracking-widest text-amber-400 font-bold">Fast Delivery Radius</p>
-              <h4 className="text-base font-bold">Delivering within 8 km with express hot bags</h4>
+              <h4 className="text-base font-bold">Delivering within {deliveryRadius} km with express hot bags</h4>
               <p className="text-xs text-stone-400">Order directly online or visit us in-store for dine-in & takeaway.</p>
             </div>
           </div>

@@ -18,9 +18,11 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { AGF_CAFE_HUB, MAX_DELIVERY_RADIUS_KM, calculateDistance } from '../../utils/locationUtils';
+import { AGF_CAFE_HUB, calculateDistance } from '../../utils/locationUtils';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 
 export default function FleetRadarModal({ isOpen, onClose }) {
+  const { radiusKm } = useDeliveryRadius();
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const riderMarkersRef = useRef({});
@@ -87,9 +89,9 @@ export default function FleetRadarModal({ isOpen, onClose }) {
       attribution: '&copy; Google Maps'
     }).addTo(map);
 
-    // 10 KM Geofence Delivery Radius Zone Circle
+    // Dynamic Geofence Delivery Radius Zone Circle
     L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      radius: radiusKm * 1000,
       color: '#10b981',
       fillColor: '#10b981',
       fillOpacity: 0.05,
@@ -97,7 +99,7 @@ export default function FleetRadarModal({ isOpen, onClose }) {
     }).addTo(map);
 
     L.circle([AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng], {
-      radius: MAX_DELIVERY_RADIUS_KM * 1000,
+      radius: radiusKm * 1000,
       color: '#f59e0b',
       fillOpacity: 0,
       weight: 1.5,
@@ -132,7 +134,7 @@ export default function FleetRadarModal({ isOpen, onClose }) {
         <strong style="color: #d97706; font-size: 14px;">☕ ${AGF_CAFE_HUB.name} Central Kitchen</strong>
         <p style="margin: 4px 0 0; font-size: 11px; color: #475569;">${AGF_CAFE_HUB.address}</p>
         <span style="display:inline-block; margin-top:4px; padding:2px 8px; background:#ecfdf5; color:#047857; font-size:10px; font-weight:bold; border-radius:9999px;">
-          5 KM Fleet Coverage Origin
+          ${radiusKm} KM Fleet Coverage Origin
         </span>
       </div>
     `);
@@ -276,7 +278,7 @@ export default function FleetRadarModal({ isOpen, onClose }) {
                 </span>
               </div>
               <p className="text-xs text-stone-400">
-                Real-time tracking of all active delivery partners across 5 KM Baharagora Hub
+                Real-time tracking of all active delivery partners across {radiusKm} KM Baharagora Hub
               </p>
             </div>
           </div>
@@ -284,7 +286,7 @@ export default function FleetRadarModal({ isOpen, onClose }) {
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 bg-stone-950 px-3 py-1.5 rounded-2xl border border-stone-800 text-xs font-bold text-stone-300">
               <ShieldCheck className="w-4 h-4 text-amber-400" />
-              <span>5 KM Cafe Radius Active</span>
+              <span>{radiusKm} KM Cafe Radius Active</span>
             </div>
 
             <button

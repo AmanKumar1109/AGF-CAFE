@@ -15,8 +15,10 @@ import {
 import gsap from 'gsap';
 import { useAuth } from '../../context/useAuth';
 import LocationPickerModal from '../../components/location/LocationPickerModal';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 
 export const SavedAddresses = () => {
+  const deliveryRadius = useDeliveryRadius();
   const containerRef = useRef(null);
   const { userProfile, addAddress, deleteAddress, setPrimaryAddress } = useAuth();
   
@@ -208,7 +210,7 @@ export const SavedAddresses = () => {
               className="flex items-center gap-2 px-5 py-3 bg-amber-400 hover:bg-amber-500 text-stone-950 font-black rounded-2xl text-xs uppercase tracking-wider shadow-sm transition-all cursor-pointer"
             >
               <MapPin className="w-4 h-4 stroke-[2.5]" />
-              <span>Pin Exact Point on Map (5 KM)</span>
+              <span>Pin Exact Point on Map ({deliveryRadius} KM)</span>
             </button>
 
             <button
@@ -225,7 +227,7 @@ export const SavedAddresses = () => {
           {addressForm.lat && addressForm.lng && (
             <div className="mb-5 p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>Map Coordinates Saved: {addressForm.lat}, {addressForm.lng} (Inside 5 KM Zone)</span>
+              <span>Map Coordinates Saved: {addressForm.lat}, {addressForm.lng} (Inside {deliveryRadius} KM Zone)</span>
             </div>
           )}
 

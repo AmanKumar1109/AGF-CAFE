@@ -8,11 +8,29 @@ export const AGF_CAFE_HUB = {
   address: 'Main Boulevard, Near Shitla Mandir, Baharagora, Jharkhand - 832101',
   phone: '+91 98765 43210',
   pincode: '832101',
-  deliveryRadiusKm: 5.0
+  deliveryRadiusKm: 10.0
 };
 
-// Maximum Allowed Fresh Delivery Radius Limit for Cafe Orders (in Kilometers)
-export const MAX_DELIVERY_RADIUS_KM = 5.0;
+// Default & Dynamic Delivery Radius Limit for Cafe Orders (in Kilometers)
+export let MAX_DELIVERY_RADIUS_KM = 10.0;
+
+/**
+ * Updates the in-memory delivery radius dynamically from Firestore settings
+ */
+export function setDynamicDeliveryRadius(radius) {
+  const r = Number(radius);
+  if (!isNaN(r) && r > 0) {
+    MAX_DELIVERY_RADIUS_KM = r;
+    AGF_CAFE_HUB.deliveryRadiusKm = r;
+  }
+}
+
+/**
+ * Returns current active delivery radius
+ */
+export function getDynamicDeliveryRadius() {
+  return MAX_DELIVERY_RADIUS_KM;
+}
 
 /**
  * Calculates Haversine distance in kilometers between two coordinates
@@ -38,19 +56,20 @@ export function calculateDistance(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Checks if a customer coordinate is within the 10 km AGF-CAFE delivery zone
+ * Checks if a customer coordinate is within the dynamic AGF-CAFE delivery zone
  */
-export function checkDeliveryServiceable(lat, lng, storeHub = AGF_CAFE_HUB) {
+export function checkDeliveryServiceable(lat, lng, storeHub = AGF_CAFE_HUB, customRadius = null) {
+  const radiusLimit = customRadius || storeHub?.deliveryRadiusKm || MAX_DELIVERY_RADIUS_KM;
+
   if (!lat || !lng) {
     return {
       isServiceable: true,
       distanceKm: 0,
-      radiusLimitKm: storeHub.deliveryRadiusKm || MAX_DELIVERY_RADIUS_KM,
+      radiusLimitKm: radiusLimit,
       diffKm: 0
     };
   }
 
-  const radiusLimit = storeHub.deliveryRadiusKm || MAX_DELIVERY_RADIUS_KM;
   const distanceKm = calculateDistance(storeHub.lat, storeHub.lng, lat, lng);
   const isServiceable = distanceKm <= radiusLimit;
 
@@ -76,7 +95,9 @@ export function calculateETA(distanceKm, prepMinutes = 12, averageSpeedKmH = 26)
 /**
  * Checks if a typed/selected address string contains known out-of-range cities/towns
  */
-export function checkAddressTextServiceability(addressObj) {
+export function checkAddressTextServiceability(addressObj, customRadius = null) {
+  const radiusLimit = customRadius || MAX_DELIVERY_RADIUS_KM;
+
   if (!addressObj) {
     return { isServiceable: true, distanceKm: 0, reason: '' };
   }
@@ -113,7 +134,7 @@ export function checkAddressTextServiceability(addressObj) {
         isServiceable: false,
         distanceKm: town.distance,
         townName: town.name,
-        reason: `🚫 Delivery Unavailable: "${town.name}" is ~${town.distance} km away from AGF Cafe. We deliver fresh food strictly within a 5 km radius of Baharagora!`
+        reason: `🚫 Delivery Unavailable: "${town.name}" is ~${town.distance} km away from AGF Cafe. We deliver fresh food strictly within a ${radiusLimit} km radius of Baharagora!`
       };
     }
   }
@@ -126,7 +147,7 @@ export function checkAddressTextServiceability(addressObj) {
         isServiceable: false,
         distanceKm: 105,
         townName: addressObj.city || 'Out of Town',
-        reason: `🚫 Delivery Unavailable: Pincode ${pincode} is outside AGF Cafe's 5 km Baharagora delivery zone!`
+        reason: `🚫 Delivery Unavailable: Pincode ${pincode} is outside AGF Cafe's ${radiusLimit} km Baharagora delivery zone!`
       };
     }
   }
@@ -137,14 +158,14 @@ export function checkAddressTextServiceability(addressObj) {
     const lng = parseFloat(addressObj.lng);
     if (!isNaN(lat) && !isNaN(lng)) {
       const distanceKm = calculateDistance(AGF_CAFE_HUB.lat, AGF_CAFE_HUB.lng, lat, lng);
-      const isServiceable = distanceKm <= MAX_DELIVERY_RADIUS_KM;
+      const isServiceable = distanceKm <= radiusLimit;
       return {
         isServiceable,
         distanceKm,
         townName: addressObj.city || 'Local Area',
         reason: isServiceable
           ? ''
-          : `🚫 Delivery Unavailable: Address is ${distanceKm} km from AGF Cafe (Exceeds 10.0 km radius limit)!`
+          : `🚫 Delivery Unavailable: Address is ${distanceKm} km from AGF Cafe (Exceeds ${radiusLimit} km radius limit)!`
       };
     }
   }

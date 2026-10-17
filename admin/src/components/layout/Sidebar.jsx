@@ -145,7 +145,7 @@ export const Sidebar = ({ isCollapsed, onToggleCollapse, activeTab, onSelectTab 
       return (
         <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-          <span>RADAR</span>
+          <span></span>
         </span>
       );
     }

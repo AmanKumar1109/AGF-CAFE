@@ -10,12 +10,14 @@ import {
   Radio
 } from 'lucide-react';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
+import { useDeliveryRadius } from '../../hooks/useDeliveryRadius';
 import { CurrentOrdersView } from './CurrentOrdersView';
 import { OrderHistoryView } from './OrderHistoryView';
 
 const FleetRadarView = lazy(() => import('../fleet/FleetRadarView'));
 
 export const OrdersManager = () => {
+  const { radiusKm } = useDeliveryRadius();
   const [activeTab, setActiveTab] = useState('live');
   const { activeOrders, playOrderPingChime, toastMessage } = useAdminOrders();
 
@@ -89,7 +91,7 @@ export const OrdersManager = () => {
           <Radio className="w-4 h-4 stroke-[2.5] animate-pulse text-amber-500" />
           <span>Live Delivery Map & Radar</span>
           <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500 text-white">
-            5 KM
+            {radiusKm} KM
           </span>
         </button>
 

@@ -20,8 +20,10 @@ import {
 } from 'lucide-react';
 import { useAdminOrders } from '../../context/AdminOrdersContext';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { fetchRoadRoute } from '../../utils/routeService';
+import { resolveOrderCoordinates, AGF_CAFE_HUB } from '../../utils/locationUtils';
 import gsap from 'gsap';
 
 const DeliveryMapModal = React.lazy(() => import('./DeliveryMapModal'));
@@ -50,6 +52,39 @@ export const CurrentOrdersView = () => {
   const [viewDetailsOrder, setViewDetailsOrder] = useState(null);
   const [selectedOrderForMap, setSelectedOrderForMap] = useState(null);
   const [isFleetRadarOpen, setIsFleetRadarOpen] = useState(false);
+  const [roadDistances, setRoadDistances] = useState({});
+
+  // Asynchronously resolve true road driving distance for all active orders
+  useEffect(() => {
+    let active = true;
+    orders.forEach(async (order) => {
+      if (!order?.id) return;
+      if (order.roadDistanceKm) {
+        if (active) setRoadDistances(prev => ({ ...prev, [order.id]: parseFloat(order.roadDistanceKm) }));
+        return;
+      }
+      try {
+        const coords = await resolveOrderCoordinates(order);
+        if (coords && coords.lat && coords.lng && active) {
+          const res = await fetchRoadRoute(AGF_CAFE_HUB, coords);
+          if (res && res.totalDistanceKm > 0 && active) {
+            setRoadDistances(prev => ({ ...prev, [order.id]: res.totalDistanceKm }));
+            // Persist true road distance in Firestore so all devices see it immediately
+            updateDoc(doc(db, 'orders', order.id), {
+              roadDistanceKm: res.totalDistanceKm,
+              distanceKm: res.totalDistanceKm
+            }).catch(console.warn);
+          }
+        }
+      } catch (err) {
+        if (order.distanceKm && active) {
+          const estimated = Math.round(parseFloat(order.distanceKm) * 1.25 * 10) / 10;
+          setRoadDistances(prev => ({ ...prev, [order.id]: estimated }));
+        }
+      }
+    });
+    return () => { active = false; };
+  }, [orders]);
 
   const containerRef = useRef(null);
 
@@ -230,15 +265,23 @@ export const CurrentOrdersView = () => {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedOrderForMap(order)}
-                        className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-400/40 rounded-xl text-[10px] font-black flex items-center gap-1 transition-colors cursor-pointer"
-                        title="View Delivery Route & Distance on Map"
-                      >
-                        <Navigation className="w-3 h-3 text-amber-600" />
-                        <span>{order.distanceKm ? `${parseFloat(order.distanceKm).toFixed(1)} km` : 'Map'}</span>
-                      </button>
+                      {(() => {
+                        const currentRoadDist = roadDistances[order.id] 
+                          || order.roadDistanceKm 
+                          || (order.distanceKm ? Math.round(parseFloat(order.distanceKm) * 1.25 * 10) / 10 : null);
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrderForMap(order)}
+                            className="px-2.5 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-400/40 rounded-xl text-[10px] font-black flex items-center gap-1 transition-colors cursor-pointer"
+                            title="View Real Driving Road Route & Navigation on Map"
+                          >
+                            <Navigation className="w-3 h-3 text-amber-600" />
+                            <span>{currentRoadDist ? `${parseFloat(currentRoadDist).toFixed(1)} km Road` : 'Map'}</span>
+                          </button>
+                        );
+                      })()}
 
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
                         isReceived 
