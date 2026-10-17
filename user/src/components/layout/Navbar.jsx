@@ -12,9 +12,11 @@ import {
   ChevronDown,
   LayoutDashboard,
   Gift,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useCart } from '../../context/useCart';
 import { useAuth } from '../../context/useAuth';
+import { useDineIn } from '../../context/DineInContext';
 import { Button } from '../ui/Button';
 
 export const Navbar = () => {
@@ -25,6 +27,7 @@ export const Navbar = () => {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   const { totalCount, setIsCartOpen } = useCart();
+  const { isDineIn, tableNumber, exitDineIn } = useDineIn();
   const {
     currentUser,
     userProfile,
@@ -183,6 +186,27 @@ export const Navbar = () => {
             )}
           </div>
 
+          {/* Dine-In Mode Active Pill (Desktop & Tablet) */}
+          {isDineIn && (
+            <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs shadow-sm">
+              <UtensilsCrossed className="w-3.5 h-3.5 text-amber-500" />
+              <span className={`font-black ${isLightNavbar ? 'text-amber-700' : 'text-amber-400'}`}>
+                Table #{tableNumber || '1'}
+              </span>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Leave Table #${tableNumber || '1'} and switch back to Online Home Delivery?`)) {
+                    exitDineIn();
+                  }
+                }}
+                className="text-[10px] font-bold text-red-500 hover:text-red-400 hover:underline pl-1 cursor-pointer border-l border-amber-500/20 ml-0.5"
+                title="Leave table & switch to online delivery"
+              >
+                Exit
+              </button>
+            </div>
+          )}
+
           {/* Cart Icon & Badge */}
           <button
             onClick={() => setIsCartOpen(true)}
@@ -311,6 +335,23 @@ export const Navbar = () => {
                       </button>
                     </div>
 
+                    {isDineIn && (
+                      <div className={`p-1 border-t ${isLightNavbar ? 'border-stone-100' : 'border-stone-800'}`}>
+                        <button
+                          onClick={() => {
+                            setIsUserMenuOpen(false);
+                            if (window.confirm(`Leave Table #${tableNumber || '1'} and switch back to Online Home Delivery?`)) {
+                              exitDineIn();
+                            }
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-xs font-bold text-amber-500 hover:bg-amber-500/10 rounded-xl transition cursor-pointer text-left"
+                        >
+                          <UtensilsCrossed className="w-4 h-4 text-amber-500" />
+                          <span>Leave Table #{tableNumber || '1'} (Go Online)</span>
+                        </button>
+                      </div>
+                    )}
+
                     <div className={`pt-1 border-t ${isLightNavbar ? 'border-stone-100' : 'border-stone-800'}`}>
                       <button
                         onClick={() => {
@@ -412,6 +453,31 @@ export const Navbar = () => {
             </div>
           </form>
           
+          {/* Mobile Dine-In Active Card */}
+          {isDineIn && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-black text-amber-500 flex items-center gap-1">
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  <span>Table #{tableNumber || '1'} Dine-In</span>
+                </p>
+                <p className="text-[10px] text-stone-400">Offline Table Mode Active</p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  if (window.confirm(`Leave Table #${tableNumber || '1'} and switch to Online Home Delivery?`)) {
+                    exitDineIn();
+                  }
+                }}
+                className="px-2.5 py-1.5 bg-red-950/60 hover:bg-red-900 text-red-300 text-xs font-bold rounded-xl border border-red-500/30 transition flex items-center gap-1 cursor-pointer"
+              >
+                <LogOut className="w-3 h-3 text-red-400" />
+                <span>Leave Table</span>
+              </button>
+            </div>
+          )}
+
           {/* Mobile Auth Section */}
           <div className={`pt-3 border-t ${isLightNavbar ? 'border-stone-200' : 'border-stone-800'}`}>
             {currentUser ? (

@@ -13,7 +13,8 @@ import {
   PhoneCall,
   AlertCircle,
   Flame,
-  Check
+  Check,
+  LogOut,
 } from 'lucide-react';
 
 export const DineInOrderTrackerModal = () => {
@@ -25,6 +26,7 @@ export const DineInOrderTrackerModal = () => {
     activeOrders = [],
     tableNumber,
     customerInfo,
+    exitDineIn,
   } = useDineIn();
 
   if (!isOrderTrackerOpen) return null;
@@ -79,7 +81,7 @@ export const DineInOrderTrackerModal = () => {
                   Table #{tableNumber}
                 </span>
                 <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
-                  {ordersList.length > 1 ? `${ordersList.length} Rounds Active` : 'Running Tab'}
+                  {ordersList.length > 1 ? `${ordersList.length} Orders Active` : 'Active Order'}
                 </span>
               </div>
               <h3 className="text-base font-bold text-white">Live Kitchen & Table Tracking</h3>
@@ -112,7 +114,7 @@ export const DineInOrderTrackerModal = () => {
                   <div className="flex items-center justify-between border-b border-stone-800/80 pb-2.5">
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-0.5 rounded-lg bg-amber-400 text-stone-950 font-black text-xs font-serif">
-                        Round #{roundNum}
+                        {roundNum === 1 ? '1st Order' : `Extra Order #${roundNum - 1}`}
                       </span>
                       <span className="text-[11px] font-mono font-semibold text-stone-400">
                         #{ord.orderId || ord.id?.slice(-6).toUpperCase()}
@@ -210,9 +212,9 @@ export const DineInOrderTrackerModal = () => {
                     })}
                   </div>
 
-                  {/* Round Subtotal */}
+                  {/* Order Subtotal */}
                   <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs font-semibold text-stone-300">
-                    <span className="text-stone-400">Round #{roundNum} Total:</span>
+                    <span className="text-stone-400">{roundNum === 1 ? '1st Order' : 'Extra Order'} Total:</span>
                     <span className="font-mono font-bold text-stone-200">
                       ₹{ord.grandTotal || ord.totalAmount || 0}
                     </span>
@@ -226,7 +228,7 @@ export const DineInOrderTrackerModal = () => {
           <div className="bg-stone-950 p-4 rounded-2xl border border-amber-500/30 flex items-center justify-between shadow-lg">
             <div>
               <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">
-                Total Master Running Bill ({ordersList.length} Round{ordersList.length === 1 ? '' : 's'})
+                Total Table Bill ({ordersList.length} Order{ordersList.length === 1 ? '' : 's'})
               </span>
               <span className="text-2xl font-black text-amber-400 font-mono mt-0.5 block">
                 ₹{combinedRunningTotal.toFixed(2)}
@@ -259,7 +261,27 @@ export const DineInOrderTrackerModal = () => {
               className="w-full py-3.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
               <PlusCircle className="w-4 h-4 stroke-[2.5]" />
-              <span>Order More Dishes / Drinks (Add Round #{ordersList.length + 1})</span>
+              <span>Order Extra Dishes / Drinks (Re-Order)</span>
+            </button>
+          </div>
+
+          {/* Leave Table / Switch to Home Delivery Action */}
+          <div className="pt-2 border-t border-stone-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 bg-stone-950/60 p-3.5 rounded-2xl border border-stone-800">
+            <div className="text-left w-full sm:w-auto">
+              <p className="text-xs font-bold text-stone-200">Done eating or leaving cafe?</p>
+              <p className="text-[10px] text-stone-400">Exit Table #{tableNumber} session & switch back to Home Delivery</p>
+            </div>
+            <button
+              onClick={() => {
+                if (window.confirm(`Leave Table #${tableNumber} and switch back to normal online delivery?`)) {
+                  exitDineIn();
+                  navigate('/');
+                }
+              }}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-stone-800 hover:bg-red-950/70 text-stone-300 hover:text-red-300 border border-stone-700 hover:border-red-500/40 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5 text-red-400" />
+              <span>Leave Table & Exit Dine-In</span>
             </button>
           </div>
         </div>

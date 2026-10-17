@@ -70,7 +70,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     handleRemovePromo,
   } = useCart();
   const { currentUser, userProfile, addAddress, updateAddress, setIsAuthModalOpen } = useAuth();
-  const { isDineIn, tableNumber, customerInfo, setDineInActiveOrder, setIsOrderTrackerOpen } = useDineIn();
+  const { isDineIn, tableNumber, customerInfo, setDineInActiveOrder, setIsOrderTrackerOpen, exitDineIn } = useDineIn();
 
   // Address state
   const [activeAddressId, setActiveAddressId] = useState(null);
@@ -720,9 +720,23 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                   : (isDineIn ? `Table #${tableNumber || '1'} Dine-In` : 'Express Checkout')}
               </span>
               {isDineIn && !isSubmitted && (
-                <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                  ₹0 Delivery Fee
-                </span>
+                <>
+                  <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                    ₹0 Delivery Fee
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Switch this order to Online Home Delivery (Doorstep)?')) {
+                        exitDineIn();
+                      }
+                    }}
+                    className="text-[10px] font-bold text-amber-400 hover:text-amber-300 underline cursor-pointer ml-1"
+                    title="Switch to normal home delivery"
+                  >
+                    (Switch to Delivery)
+                  </button>
+                </>
               )}
             </div>
             <h3 className="text-xl sm:text-2xl font-black text-white font-serif mt-0.5">

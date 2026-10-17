@@ -53,7 +53,7 @@ export const CartDrawer = () => {
   } = useCart();
 
   const { currentUser, setIsAuthModalOpen } = useAuth();
-  const { isDineIn, tableNumber, customerInfo, setIsTableEntryModalOpen } = useDineIn();
+  const { isDineIn, tableNumber, customerInfo, setIsTableEntryModalOpen, exitDineIn } = useDineIn();
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(false);
   const [showCouponsList, setShowCouponsList] = useState(false);
@@ -116,9 +116,22 @@ export const CartDrawer = () => {
                   <div className="flex items-center gap-2">
                     <h3 className="font-bold text-white text-base">Your Cart</h3>
                     {isDineIn && (
-                      <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                        Table #{tableNumber}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                          Table #{tableNumber}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Switch cart back to Online Doorstep Delivery?')) {
+                              exitDineIn();
+                            }
+                          }}
+                          className="text-[10px] font-bold text-amber-400 hover:text-amber-300 hover:underline cursor-pointer"
+                          title="Switch to home delivery"
+                        >
+                          (Go Online)
+                        </button>
+                      </div>
                     )}
                   </div>
                   <p className="text-xs text-stone-400">
