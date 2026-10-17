@@ -21,7 +21,7 @@ import {
   UtensilsCrossed,
   ChefHat
 } from 'lucide-react';
-import { collection, addDoc, updateDoc, setDoc, doc, arrayUnion, serverTimestamp, increment } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, setDoc, doc, arrayUnion, serverTimestamp, increment, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { useCart } from '../../../context/useCart';
 import { useAuth } from '../../../context/useAuth';
@@ -481,10 +481,32 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
     const finalPaymentMethod = isDineIn && paymentMethod === 'cash' ? 'counter_cash' : paymentMethod;
     const finalPaymentStatus = isDineIn && paymentMethod === 'cash' ? 'pending' : (paymentMethod === 'online' ? 'paid' : 'pending');
 
+    let roundNumber = 1;
+    let existingSessionId = null;
+
+    if (isDineIn && tableNumber) {
+      try {
+        const qActive = query(
+          collection(db, 'offline_orders'),
+          where('tableNumber', '==', String(tableNumber)),
+          where('status', 'in', ['Order Received', 'Cooking', 'Served'])
+        );
+        const snapActive = await getDocs(qActive);
+        if (!snapActive.empty) {
+          roundNumber = snapActive.size + 1;
+          existingSessionId = snapActive.docs[0].data().tableSessionId || snapActive.docs[0].id;
+        }
+      } catch (rErr) {
+        console.warn('Could not determine table round number:', rErr);
+      }
+    }
+
     const orderPayload = {
       orderId: generatedId,
       orderType: isDineIn ? 'dine-in' : 'delivery',
       tableNumber: isDineIn ? String(tableNumber || '1') : null,
+      roundNumber: isDineIn ? roundNumber : null,
+      tableSessionId: existingSessionId || generatedId,
       userId: currentUser ? currentUser.uid : null,
       customerEmail: currentUser ? currentUser.email : null,
       customerName: finalCustomerName,
@@ -545,6 +567,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
                 activeOrderId: docRef.id,
                 currentGuestName: finalCustomerName,
                 currentGuestPhone: finalCustomerPhone,
+                roundsCount: roundNumber,
                 lastOrderTime: serverTimestamp(),
                 updatedAt: serverTimestamp(),
               },
@@ -564,7 +587,7 @@ export const CheckoutModal = ({ isOpen, onClose }) => {
               {
                 phone: finalCustomerPhone,
                 name: finalCustomerName,
-                totalVisits: increment(1),
+                totalVisits: roundNumber > 1 ? increment(0) : increment(1),
                 totalSpent: increment(grandTotal),
                 lastTableNumber: String(tableNumber || '1'),
                 lastOrderId: docRef.id,

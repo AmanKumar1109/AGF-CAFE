@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDineIn } from '../../context/DineInContext';
+import { useNavigate } from 'react-router-dom';
 import {
   UtensilsCrossed,
   ChefHat,
@@ -10,49 +11,61 @@ import {
   Receipt,
   Sparkles,
   PhoneCall,
-  AlertCircle
+  AlertCircle,
+  Flame,
+  Check
 } from 'lucide-react';
 
 export const DineInOrderTrackerModal = () => {
+  const navigate = useNavigate();
   const {
     isOrderTrackerOpen,
     setIsOrderTrackerOpen,
     activeOrder,
+    activeOrders = [],
     tableNumber,
     customerInfo,
   } = useDineIn();
 
-  if (!isOrderTrackerOpen || !activeOrder) return null;
+  if (!isOrderTrackerOpen) return null;
 
-  const status = activeOrder.status || 'Order Received';
+  const ordersList = activeOrders.length > 0 ? activeOrders : (activeOrder ? [activeOrder] : []);
+  if (ordersList.length === 0) return null;
 
-  const steps = [
+  const latestOrder = ordersList[ordersList.length - 1];
+  const combinedRunningTotal = ordersList.reduce(
+    (sum, o) => sum + Number(o.grandTotal || o.totalAmount || 0),
+    0
+  );
+  const isAllPaid = ordersList.every((o) => o.paymentStatus === 'paid');
+
+  const getSteps = (orderStatus) => [
     {
       title: 'Order Received',
       desc: 'Sent to Kitchen Display',
       active: true,
-      completed: ['Cooking', 'Served', 'Completed'].includes(status),
-      current: status === 'Order Received' || status === 'Pending',
+      completed: ['Cooking', 'Served', 'Completed'].includes(orderStatus),
+      current: orderStatus === 'Order Received' || orderStatus === 'Pending',
     },
     {
       title: 'Cooking in Progress',
       desc: 'Chef is preparing your fresh meal',
-      active: ['Cooking', 'Served', 'Completed'].includes(status),
-      completed: ['Served', 'Completed'].includes(status),
-      current: status === 'Cooking',
+      active: ['Cooking', 'Served', 'Completed'].includes(orderStatus),
+      completed: ['Served', 'Completed'].includes(orderStatus),
+      current: orderStatus === 'Cooking',
     },
     {
       title: 'Served to Table',
       desc: `Delivered hot to Table #${tableNumber}`,
-      active: ['Served', 'Completed'].includes(status),
-      completed: status === 'Completed',
-      current: status === 'Served',
+      active: ['Served', 'Completed'].includes(orderStatus),
+      completed: orderStatus === 'Completed',
+      current: orderStatus === 'Served',
     },
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-stone-900 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col text-stone-100 max-h-[92vh]">
+      <div className="relative w-full max-w-lg bg-stone-900 border border-amber-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col text-stone-100 max-h-[92vh]">
         
         {/* Header */}
         <div className="p-5 pb-4 bg-gradient-to-b from-amber-500/20 to-transparent border-b border-stone-800 flex items-center justify-between">
@@ -65,168 +78,188 @@ export const DineInOrderTrackerModal = () => {
                 <span className="text-xs font-black uppercase tracking-wider text-amber-300">
                   Table #{tableNumber}
                 </span>
-                <span className="text-[10px] bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full border border-stone-700">
-                  #{activeOrder.id?.slice(-6).toUpperCase()}
+                <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30 font-bold">
+                  {ordersList.length > 1 ? `${ordersList.length} Rounds Active` : 'Running Tab'}
                 </span>
               </div>
-              <h3 className="text-base font-bold text-white">Live Kitchen Tracking</h3>
+              <h3 className="text-base font-bold text-white">Live Kitchen & Table Tracking</h3>
             </div>
           </div>
           <button
             onClick={() => setIsOrderTrackerOpen(false)}
-            className="p-2 text-stone-400 hover:text-white rounded-full hover:bg-stone-800 transition-colors"
+            className="p-2 text-stone-400 hover:text-white rounded-full hover:bg-stone-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-5">
-          {/* Status Tracker */}
-          <div className="bg-stone-850 border border-stone-800 rounded-2xl p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-stone-300 uppercase tracking-wider">
-                Current Status
-              </span>
-              <span className={`text-xs font-black px-2.5 py-1 rounded-full ${
-                status === 'Cooking'
-                  ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30 animate-pulse'
-                  : status === 'Served'
-                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-              }`}>
-                {status}
-              </span>
-            </div>
+        <div className="p-5 sm:p-6 overflow-y-auto space-y-4">
+          
+          {/* Multi-Round Orders List */}
+          <div className="space-y-4">
+            {ordersList.map((ord, oIdx) => {
+              const roundNum = ord.roundNumber || oIdx + 1;
+              const ordStatus = ord.status || 'Order Received';
+              const steps = getSteps(ordStatus);
 
-            {/* Stepper */}
-            <div className="space-y-3 pt-2">
-              {steps.map((step, idx) => (
-                <div key={idx} className="flex items-start gap-3 relative">
-                  <div className="flex flex-col items-center">
-                    <div
-                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                        step.completed
-                          ? 'bg-emerald-500 text-white'
-                          : step.current
-                          ? 'bg-amber-400 text-stone-950 ring-4 ring-amber-400/20'
-                          : 'bg-stone-800 text-stone-500 border border-stone-700'
+              return (
+                <div
+                  key={ord.id}
+                  className="bg-stone-850/90 border border-stone-800 rounded-2xl p-4 space-y-3 shadow-sm"
+                >
+                  {/* Round Header */}
+                  <div className="flex items-center justify-between border-b border-stone-800/80 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-amber-400 text-stone-950 font-black text-xs font-serif">
+                        Round #{roundNum}
+                      </span>
+                      <span className="text-[11px] font-mono font-semibold text-stone-400">
+                        #{ord.orderId || ord.id?.slice(-6).toUpperCase()}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${
+                        ordStatus === 'Cooking'
+                          ? 'bg-amber-400/20 text-amber-300 border border-amber-400/30 animate-pulse'
+                          : ordStatus === 'Served'
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                          : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                       }`}
                     >
-                      {step.completed ? (
-                        <CheckCircle2 className="w-4 h-4" />
-                      ) : (
-                        idx + 1
-                      )}
-                    </div>
-                    {idx < steps.length - 1 && (
-                      <div
-                        className={`w-0.5 h-6 my-1 ${
-                          step.completed ? 'bg-emerald-500' : 'bg-stone-800'
-                        }`}
-                      />
-                    )}
-                  </div>
-                  <div className="pt-0.5">
-                    <p className={`text-xs font-bold ${step.active ? 'text-white' : 'text-stone-500'}`}>
-                      {step.title}
-                    </p>
-                    <p className="text-[11px] text-stone-400">{step.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Ordered Items Summary */}
-          <div className="bg-stone-850 border border-stone-800 rounded-2xl p-4 space-y-2">
-            <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block mb-2">
-              Ordered Items
-            </span>
-            <div className="divide-y divide-stone-800">
-              {(activeOrder.items || []).map((item, idx) => {
-                const addons = [];
-                if (item.selectedCrust && typeof item.selectedCrust === 'string' && item.selectedCrust.toLowerCase() !== 'standard') {
-                  addons.push({ name: item.selectedCrust, type: 'Crust/Size' });
-                } else if (item.selectedCrust?.name && item.selectedCrust.name.toLowerCase() !== 'standard') {
-                  addons.push({ name: item.selectedCrust.name, price: item.selectedCrust.price, type: 'Crust/Size' });
-                }
-                const rawAddons = item.selectedAddOns || item.selectedAddons || item.addons || item.addOns || [];
-                if (Array.isArray(rawAddons)) {
-                  rawAddons.forEach(a => {
-                    if (typeof a === 'string' && a.trim()) addons.push({ name: a.trim() });
-                    else if (a && typeof a === 'object') {
-                      const name = a.name || a.title || a.label || '';
-                      if (name) addons.push({ name, price: a.price, type: a.type });
-                    }
-                  });
-                }
-
-                return (
-                  <div key={idx} className="py-2.5 flex items-start justify-between text-xs gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-amber-400 shrink-0">{item.quantity}x</span>
-                        <span className="text-stone-100 font-semibold">{item.name}</span>
-                      </div>
-
-                      {addons.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1 pl-5">
-                          {addons.map((ad, aIdx) => (
-                            <span
-                              key={aIdx}
-                              className="text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-md"
-                            >
-                              + {ad.name} {ad.price > 0 && `(+₹${ad.price})`}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {item.specialInstructions && (
-                        <p className="text-[10px] text-stone-400 italic mt-1 pl-5">
-                          "{item.specialInstructions}"
-                        </p>
-                      )}
-                    </div>
-
-                    <span className="font-mono font-bold text-stone-300 shrink-0 pt-0.5">
-                      ₹{(item.price || item.basePrice || 0) * (item.quantity || 1)}
+                      {ordStatus === 'Order Received' ? '🔔 In Queue' : ordStatus === 'Cooking' ? '🍳 Cooking' : '🍽️ Served'}
                     </span>
                   </div>
-                );
-              })}
-            </div>
 
-            <div className="pt-3 border-t border-stone-800 flex items-center justify-between text-sm">
-              <span className="font-bold text-stone-200">Grand Total</span>
-              <span className="font-black text-amber-400 font-mono text-base">
-                ₹{activeOrder.grandTotal || activeOrder.totalAmount || 0}
+                  {/* Micro Stepper */}
+                  <div className="flex items-center justify-between text-[11px] py-1 px-1">
+                    {steps.map((st, sIdx) => (
+                      <div key={sIdx} className="flex items-center gap-1.5">
+                        <div
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                            st.completed
+                              ? 'bg-emerald-500 text-white'
+                              : st.current
+                              ? 'bg-amber-400 text-stone-950 ring-2 ring-amber-400/30'
+                              : 'bg-stone-800 text-stone-500'
+                          }`}
+                        >
+                          {st.completed ? <Check className="w-3 h-3 stroke-[3]" /> : sIdx + 1}
+                        </div>
+                        <span className={`text-[10px] font-bold ${st.active ? 'text-stone-200' : 'text-stone-500'}`}>
+                          {st.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Items in this round */}
+                  <div className="divide-y divide-stone-800/60 pt-1">
+                    {(ord.items || []).map((item, idx) => {
+                      const addons = [];
+                      if (item.selectedCrust && typeof item.selectedCrust === 'string' && item.selectedCrust.toLowerCase() !== 'standard') {
+                        addons.push({ name: item.selectedCrust, type: 'Crust/Size' });
+                      } else if (item.selectedCrust?.name && item.selectedCrust.name.toLowerCase() !== 'standard') {
+                        addons.push({ name: item.selectedCrust.name, price: item.selectedCrust.price, type: 'Crust/Size' });
+                      }
+                      const rawAddons = item.selectedAddOns || item.selectedAddons || item.addons || item.addOns || [];
+                      if (Array.isArray(rawAddons)) {
+                        rawAddons.forEach((a) => {
+                          if (typeof a === 'string' && a.trim()) addons.push({ name: a.trim() });
+                          else if (a && typeof a === 'object') {
+                            const name = a.name || a.title || a.label || '';
+                            if (name) addons.push({ name, price: a.price, type: a.type });
+                          }
+                        });
+                      }
+
+                      return (
+                        <div key={idx} className="py-2 flex items-start justify-between text-xs gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-amber-400 shrink-0">{item.quantity}x</span>
+                              <span className="text-stone-100 font-semibold">{item.name}</span>
+                            </div>
+
+                            {addons.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1 pl-5">
+                                {addons.map((ad, aIdx) => (
+                                  <span
+                                    key={aIdx}
+                                    className="text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded-md"
+                                  >
+                                    + {ad.name} {ad.price > 0 && `(+₹${ad.price})`}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+
+                            {item.specialInstructions && (
+                              <p className="text-[10px] text-stone-400 italic mt-0.5 pl-5">
+                                "{item.specialInstructions}"
+                              </p>
+                            )}
+                          </div>
+
+                          <span className="font-mono font-bold text-stone-300 shrink-0 pt-0.5">
+                            ₹{(item.price || item.basePrice || 0) * (item.quantity || 1)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Round Subtotal */}
+                  <div className="pt-2 border-t border-stone-800/80 flex items-center justify-between text-xs font-semibold text-stone-300">
+                    <span className="text-stone-400">Round #{roundNum} Total:</span>
+                    <span className="font-mono font-bold text-stone-200">
+                      ₹{ord.grandTotal || ord.totalAmount || 0}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Master Running Bill Summary */}
+          <div className="bg-stone-950 p-4 rounded-2xl border border-amber-500/30 flex items-center justify-between shadow-lg">
+            <div>
+              <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">
+                Total Master Running Bill ({ordersList.length} Round{ordersList.length === 1 ? '' : 's'})
+              </span>
+              <span className="text-2xl font-black text-amber-400 font-mono mt-0.5 block">
+                ₹{combinedRunningTotal.toFixed(2)}
               </span>
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-stone-400 pt-1">
-              <span>Payment:</span>
-              <span className={`font-bold ${
-                activeOrder.paymentMethod === 'counter_cash' && activeOrder.paymentStatus !== 'paid'
-                  ? 'text-amber-400'
-                  : 'text-emerald-400'
-              }`}>
-                {activeOrder.paymentMethod === 'counter_cash'
-                  ? 'Cash / UPI at Counter (After Eating)'
-                  : 'Paid Online (UPI)'}
+            <div className="text-right">
+              <span
+                className={`text-[11px] font-bold px-3 py-1 rounded-xl block ${
+                  isAllPaid
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}
+              >
+                {isAllPaid ? '✓ Paid Online (UPI)' : '⚠️ Pay at Counter'}
+              </span>
+              <span className="text-[10px] text-stone-400 mt-0.5 block">
+                {isAllPaid ? 'Settled via online UPI' : 'Pay after meal at cashier'}
               </span>
             </div>
           </div>
 
-          {/* Quick Actions */}
-          <div className="space-y-2 pt-1">
+          {/* Action: Add Next Round */}
+          <div className="pt-2">
             <button
-              onClick={() => setIsOrderTrackerOpen(false)}
-              className="w-full py-3 bg-amber-400 hover:bg-amber-300 text-stone-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+              onClick={() => {
+                setIsOrderTrackerOpen(false);
+                navigate('/menu');
+              }}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-98"
             >
-              <PlusCircle className="w-4 h-4" />
-              <span>Order More Items / Drinks</span>
+              <PlusCircle className="w-4 h-4 stroke-[2.5]" />
+              <span>Order More Dishes / Drinks (Add Round #{ordersList.length + 1})</span>
             </button>
           </div>
         </div>

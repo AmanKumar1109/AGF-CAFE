@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { doc, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, where } from 'firebase/firestore';
 import { checkDineInGeofence, AGF_CAFE_HUB } from '../utils/locationUtils';
 import { useAuth } from './useAuth';
 
@@ -65,31 +65,46 @@ export const DineInProvider = ({ children }) => {
     }
   }, [currentUser, userProfile, session.isDineIn]);
 
-  // Listen for realtime updates on active order if exists
+  const [activeOrders, setActiveOrders] = useState([]);
+
+  // Listen for realtime updates on all active orders for this table (Multi-Round Running Tab)
   useEffect(() => {
-    if (!session.activeOrderId) {
+    if (!session.tableNumber || !session.isDineIn) {
+      setActiveOrders([]);
       setActiveOrder(null);
       return;
     }
 
     try {
-      const orderRef = doc(db, 'offline_orders', session.activeOrderId);
+      const q = query(
+        collection(db, 'offline_orders'),
+        where('tableNumber', '==', String(session.tableNumber)),
+        where('status', 'in', ['Order Received', 'Cooking', 'Served'])
+      );
+
       const unsubscribe = onSnapshot(
-        orderRef,
+        q,
         (snap) => {
-          if (snap.exists()) {
-            setActiveOrder({ id: snap.id, ...snap.data() });
+          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+          // Sort oldest round to newest round
+          list.sort((a, b) => (a.roundNumber || 1) - (b.roundNumber || 1));
+          setActiveOrders(list);
+
+          // Set latest active order as primary activeOrder for fallback
+          if (list.length > 0) {
+            setActiveOrder(list[list.length - 1]);
           } else {
             setActiveOrder(null);
           }
         },
-        (err) => console.warn('Active dine-in order listener error:', err)
+        (err) => console.warn('Active table orders listener error:', err)
       );
+
       return () => unsubscribe();
     } catch (err) {
-      console.warn('Error setting up dine-in order listener:', err);
+      console.warn('Error setting up table orders listener:', err);
     }
-  }, [session.activeOrderId]);
+  }, [session.tableNumber, session.isDineIn]);
 
   /**
    * Verifies if customer device is physically at AGF Cafe (~150m)
@@ -243,6 +258,7 @@ export const DineInProvider = ({ children }) => {
         distanceMeters: session.distanceMeters,
         activeOrderId: session.activeOrderId,
         activeOrder,
+        activeOrders,
         isTableEntryModalOpen,
         setIsTableEntryModalOpen,
         isOrderTrackerOpen,
