@@ -31,11 +31,13 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
 
       const iframeDoc = iframe.contentWindow.document;
       iframeDoc.open();
+        const isMaster = Boolean(order.isMasterBill);
+        const titleText = isMaster ? `Master Bill Table #${order.tableNumber || '1'}` : `KOT Table #${order.tableNumber || '1'}`;
       iframeDoc.write(`
         <!DOCTYPE html>
         <html>
           <head>
-            <title>KOT Table #${order.tableNumber || '1'} - ${order.id?.slice(0, 8)}</title>
+            <title>${titleText} - ${order.id?.slice(0, 8)}</title>
             ${stylesHtml}
             <style>
               @page { margin: 0 !important; size: 80mm auto; }
@@ -94,13 +96,17 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
               <ChefHat className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-black text-slate-900 text-sm">Kitchen Order Ticket (KOT)</h3>
-              <p className="text-[10px] text-slate-500">80mm Thermal Printer View</p>
+              <h3 className="font-black text-slate-900 text-sm">
+                {order.isMasterBill ? 'Master Table Bill' : 'Kitchen Order Ticket (KOT)'}
+              </h3>
+              <p className="text-[10px] text-slate-500">
+                {order.isMasterBill ? 'Combined Running Tab • 80mm Thermal' : '80mm Thermal Printer View'}
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-200 transition"
+            className="p-1.5 text-slate-400 hover:text-slate-900 rounded-lg hover:bg-slate-200 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -114,9 +120,30 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
           >
             <div className="text-center border-b border-dashed border-slate-400 pb-2">
               <p className="font-bold text-sm tracking-wider">AGF CAFE & BISTRO</p>
-              <p className="text-[10px] uppercase font-bold tracking-widest text-slate-600">
-                *** KITCHEN ORDER TICKET (KOT) ***
-              </p>
+              {order.isMasterBill ? (
+                <>
+                  <p className="text-[11px] uppercase font-black tracking-widest text-slate-900 mt-0.5">
+                    *** FINAL MASTER BILL ***
+                  </p>
+                  <p className="text-[10px] font-bold text-slate-600">
+                    Running Tab: All {order.roundsCount || ''} Rounds Consolidated
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[10px] uppercase font-bold tracking-widest text-slate-600 mt-0.5">
+                    *** KITCHEN ORDER TICKET (KOT) ***
+                  </p>
+                  {order.roundNumber > 1 && (
+                    <div className="mt-1 px-1 py-0.5 bg-amber-100 border border-amber-300 rounded text-[11px] font-black text-amber-950">
+                      ★ ADD-ON ORDER (ROUND #{order.roundNumber}) ★
+                      <p className="text-[9px] font-normal text-slate-600 lowercase tracking-normal">
+                        (prepare only newly added dishes below)
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Giant Table Badge */}
@@ -125,7 +152,9 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
                 TABLE #{order.tableNumber || '1'}
               </p>
               <p className="text-[10px] text-slate-600">
-                Order: #{order.orderId || order.id?.slice(-6).toUpperCase()} • {orderTime}
+                {order.isMasterBill
+                  ? `Date: ${new Date().toLocaleDateString('en-IN')} • ${orderTime}`
+                  : `Order: #${order.orderId || order.id?.slice(-6).toUpperCase()} • ${orderTime}`}
               </p>
               <p className="text-[10px] text-slate-600">
                 Guest: {order.customerName || 'Walk-in'} {order.customerPhone ? `(${order.customerPhone})` : ''}
@@ -136,6 +165,7 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
             <div className="py-2 border-b border-dashed border-slate-400 space-y-1.5">
               <div className="flex justify-between font-bold text-[11px] border-b border-slate-200 pb-1">
                 <span>QTY & DISH</span>
+                {order.isMasterBill && <span>AMOUNT</span>}
               </div>
 
               {(order.items || []).map((item, idx) => {
@@ -156,12 +186,17 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
                   });
                 }
 
+                const itemTotal = (Number(item.price || item.basePrice || 0)) * (Number(item.quantity || 1));
+
                 return (
                   <div key={idx} className="space-y-0.5">
                     <div className="flex items-start justify-between font-bold text-xs">
-                      <span>
+                      <span className="flex-1 pr-2">
                         {item.quantity}x {item.name}
                       </span>
+                      {order.isMasterBill && (
+                        <span className="shrink-0 font-mono font-bold">₹{itemTotal}</span>
+                      )}
                     </div>
                     {addons.length > 0 && (
                       <div className="text-[10px] font-bold text-black pl-4">
@@ -178,13 +213,26 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
               })}
             </div>
 
-            {/* Total items */}
+            {/* Total items & Grand Total */}
             <div className="pt-1 text-[11px] flex justify-between font-bold">
               <span>Total Food Items:</span>
-              <span>{(order.items || []).reduce((sum, i) => sum + (i.quantity || 1), 0)}</span>
+              <span>{(order.items || []).reduce((sum, i) => sum + (Number(i.quantity) || 1), 0)}</span>
             </div>
 
-            {order.notes && (
+            {order.isMasterBill && (
+              <div className="pt-2 border-t border-dashed border-slate-400 space-y-1">
+                <div className="flex justify-between text-xs font-black">
+                  <span>MASTER TOTAL:</span>
+                  <span className="text-sm font-mono">₹{order.grandTotal || order.totalAmount || 0}</span>
+                </div>
+                <div className="text-[10px] text-center font-bold pt-2 border-t border-dashed border-slate-300 text-slate-700">
+                  <p>*** THANK YOU FOR DINING WITH US! ***</p>
+                  <p className="text-[9px] text-slate-500">Please visit again soon ☕</p>
+                </div>
+              </div>
+            )}
+
+            {!order.isMasterBill && order.notes && (
               <div className="text-[10px] pt-1 border-t border-dashed border-slate-400">
                 Chef Note: {order.notes}
               </div>
@@ -199,7 +247,13 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
             className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
           >
             <Printer className="w-4 h-4 stroke-[2.4]" />
-            <span>{printStatus === 'sending' ? 'Printing...' : 'Print KOT (Thermal)'}</span>
+            <span>
+              {printStatus === 'sending'
+                ? 'Printing...'
+                : order.isMasterBill
+                ? 'Print Master Bill (Thermal)'
+                : 'Print KOT (Thermal)'}
+            </span>
           </button>
           <button
             onClick={onClose}

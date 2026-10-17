@@ -199,7 +199,7 @@ export const DineInOrdersFeed = ({ dineInOrders = [], onViewOrderKOT }) => {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   {/* Left: Table & Customer */}
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-black px-3 py-1 rounded-xl bg-amber-400 text-stone-950 font-serif shadow-xs">
                         TABLE #{order.tableNumber || '1'}
                       </span>
@@ -219,6 +219,17 @@ export const DineInOrdersFeed = ({ dineInOrders = [], onViewOrderKOT }) => {
                       >
                         {order.status}
                       </span>
+
+                      {order.roundNumber > 1 ? (
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-700 text-white shadow-xs flex items-center gap-1 animate-pulse">
+                          <Sparkles className="w-3 h-3 text-amber-300" />
+                          Round #{order.roundNumber} (Add-on Order)
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                          Round #1
+                        </span>
+                      )}
                     </div>
 
                     <div className="text-xs text-slate-600 pt-1 flex items-center gap-2">

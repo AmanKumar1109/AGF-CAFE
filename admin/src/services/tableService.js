@@ -180,6 +180,32 @@ export async function settleTableBill(tableId, orderId, paymentMethod = 'counter
 }
 
 /**
+ * Settles all active orders for a table (Master Running Bill) and clears the table
+ */
+export async function settleMasterTableOrders(tableId, orderIds = [], paymentMethod = 'counter_cash') {
+  for (const oId of orderIds) {
+    if (oId) {
+      try {
+        const orderRef = doc(db, 'offline_orders', oId);
+        await updateDoc(orderRef, {
+          paymentStatus: 'paid',
+          paymentMethod,
+          status: 'Completed',
+          settledAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.warn('Error settling order in master bill:', oId, e);
+      }
+    }
+  }
+
+  if (tableId) {
+    await clearTable(tableId);
+  }
+}
+
+/**
  * Updates order status in offline_orders (e.g. Cooking, Served, Completed)
  */
 export async function updateDineInOrderStatus(orderId, newStatus, extra = {}) {
@@ -197,11 +223,27 @@ export async function updateDineInOrderStatus(orderId, newStatus, extra = {}) {
 export async function punchWalkInTableOrder(payload) {
   const generatedId = `AGF-POS-${Math.floor(100000 + Math.random() * 900000)}`;
 
+  let roundNumber = 1;
+  try {
+    const qActive = query(
+      collection(db, 'offline_orders'),
+      where('tableNumber', '==', String(payload.tableNumber || '1')),
+      where('status', 'in', ['Order Received', 'Cooking', 'Served'])
+    );
+    const snap = await getDocs(qActive);
+    if (!snap.empty) {
+      roundNumber = snap.size + 1;
+    }
+  } catch (err) {
+    console.warn('Error checking table rounds for walk-in:', err);
+  }
+
   const orderData = {
     orderId: generatedId,
     orderType: 'dine-in',
     source: 'counter_pos',
     tableNumber: String(payload.tableNumber || '1'),
+    roundNumber,
     customerName: (payload.customerName || 'Walk-in Guest').trim(),
     customerPhone: (payload.customerPhone || '').trim(),
     deliveryAddress: `Table #${payload.tableNumber || '1'}, AGF Cafe Dine-In`,
@@ -241,6 +283,7 @@ export async function punchWalkInTableOrder(payload) {
       activeOrderId: docRef.id,
       currentGuestName: orderData.customerName,
       currentGuestPhone: orderData.customerPhone,
+      roundsCount: roundNumber,
       lastOrderTime: serverTimestamp(),
       updatedAt: serverTimestamp(),
     },
@@ -256,7 +299,7 @@ export async function punchWalkInTableOrder(payload) {
         {
           phone: orderData.customerPhone,
           name: orderData.customerName,
-          totalVisits: increment(1),
+          totalVisits: roundNumber > 1 ? increment(0) : increment(1),
           totalSpent: increment(orderData.grandTotal),
           lastTableNumber: String(payload.tableNumber || '1'),
           lastOrderId: docRef.id,
