@@ -223,11 +223,11 @@ export const DineInOrdersFeed = ({ dineInOrders = [], onViewOrderKOT }) => {
                       {order.roundNumber > 1 ? (
                         <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-purple-700 text-white shadow-xs flex items-center gap-1 animate-pulse">
                           <Sparkles className="w-3 h-3 text-amber-300" />
-                          Round #{order.roundNumber} (Add-on Order)
+                          Extra / Re-Order
                         </span>
                       ) : (
                         <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
-                          Round #1
+                          1st Order
                         </span>
                       )}
                     </div>

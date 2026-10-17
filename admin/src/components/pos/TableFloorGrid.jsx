@@ -221,7 +221,7 @@ export const TableFloorGrid = ({
                   {roundsCount > 1 && (
                     <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
                       <Flame className="w-2.5 h-2.5 text-rose-600" />
-                      <span>{roundsCount} Rounds Running</span>
+                      <span>{roundsCount} Orders Active</span>
                     </span>
                   )}
                 </div>
@@ -249,7 +249,7 @@ export const TableFloorGrid = ({
                     <div className="p-2.5 rounded-xl bg-white/80 border border-slate-200 text-xs space-y-1">
                       <div className="flex items-center justify-between font-semibold text-slate-800">
                         <span>
-                          Running Bill {roundsCount > 1 ? `(${roundsCount} Rnds)` : ''}:
+                          Running Bill {roundsCount > 1 ? `(${roundsCount} Orders)` : ''}:
                         </span>
                         <span className="font-mono text-amber-700 font-black text-sm">
                           ₹{combinedRunningTotal.toFixed(0)}
@@ -317,7 +317,7 @@ export const TableFloorGrid = ({
                       className="flex-1 py-1.5 px-2 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-stone-950 rounded-xl text-xs font-black transition cursor-pointer flex items-center justify-center gap-1"
                     >
                       <Receipt className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>{roundsCount > 1 ? `Tab (${roundsCount})` : 'Settle Bill'}</span>
+                      <span>{roundsCount > 1 ? `Settle (${roundsCount} Orders)` : 'Settle Bill'}</span>
                     </button>
 
                     <button
@@ -392,7 +392,7 @@ export const TableFloorGrid = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="px-2 py-0.5 bg-amber-100 text-amber-900 font-black text-xs rounded-lg">
-                            Round #{roundNum}
+                            {roundNum === 1 ? '1st Order' : `Extra Order #${roundNum - 1}`}
                           </span>
                           <span className="font-mono text-[11px] text-slate-500 font-bold">
                             #{ord.orderId || ord.id?.slice(-6).toUpperCase()}
@@ -417,7 +417,7 @@ export const TableFloorGrid = ({
                               onViewOrderKOT(ord);
                             }}
                             className="px-2 py-0.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
-                            title="Print Round KOT"
+                            title="Print KOT"
                           >
                             <Printer className="w-3 h-3 text-amber-600" />
                             <span>KOT</span>
@@ -460,7 +460,7 @@ export const TableFloorGrid = ({
 
                       <div className="pt-1.5 border-t border-slate-200 flex justify-between items-center text-xs">
                         <span className="text-slate-500 font-medium">
-                          Round #{roundNum} Subtotal:
+                          {roundNum === 1 ? '1st Order' : 'Extra Order'} Subtotal:
                         </span>
                         <span className="font-mono font-bold text-slate-900">
                           ₹{ord.grandTotal || ord.totalAmount || 0}
@@ -534,7 +534,7 @@ export const TableFloorGrid = ({
                             : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                         }`}
                       >
-                        {isAllPaid ? '✓ All Rounds Paid Online' : '⚠️ Due at Counter'}
+                        {isAllPaid ? '✓ All Orders Paid Online' : '⚠️ Due at Counter'}
                       </span>
                     </div>
                   </div>

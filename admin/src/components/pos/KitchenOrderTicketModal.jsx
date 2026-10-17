@@ -126,7 +126,7 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
                     *** FINAL MASTER BILL ***
                   </p>
                   <p className="text-[10px] font-bold text-slate-600">
-                    Running Tab: All {order.roundsCount || ''} Rounds Consolidated
+                    Running Tab: All {order.roundsCount || ''} Orders Consolidated
                   </p>
                 </>
               ) : (
@@ -134,13 +134,17 @@ export const KitchenOrderTicketModal = ({ order, onClose }) => {
                   <p className="text-[10px] uppercase font-bold tracking-widest text-slate-600 mt-0.5">
                     *** KITCHEN ORDER TICKET (KOT) ***
                   </p>
-                  {order.roundNumber > 1 && (
+                  {order.roundNumber > 1 ? (
                     <div className="mt-1 px-1 py-0.5 bg-amber-100 border border-amber-300 rounded text-[11px] font-black text-amber-950">
-                      ★ ADD-ON ORDER (ROUND #{order.roundNumber}) ★
+                      ★ EXTRA ORDER / RE-ORDER ★
                       <p className="text-[9px] font-normal text-slate-600 lowercase tracking-normal">
                         (prepare only newly added dishes below)
                       </p>
                     </div>
+                  ) : (
+                    <p className="text-[10px] font-bold text-slate-500 mt-0.5">
+                      1st Order
+                    </p>
                   )}
                 </>
               )}
